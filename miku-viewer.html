@@ -27,7 +27,7 @@ html, body {
   background: linear-gradient(180deg, #18243f 0%, #101a30 100%);
   border-bottom: 1px solid #1e2d50;
   display: flex; align-items: center; gap: 5px; padding: 0 12px;
-  z-index: 100; user-select: none; flex-shrink: 0;
+  z-index: 100; -webkit-user-select: none; user-select: none; flex-shrink: 0;
 }
 .tb-title {
   font-size: 13px; font-weight: 700; color: #6ec6f0;
@@ -99,6 +99,7 @@ html, body {
   background: #0c1220;
   font-size: 10px; font-weight: 700; color: #7aaad4;
   text-transform: uppercase; letter-spacing: 0.05em;
+  -webkit-user-select: none;
   user-select: none;
   display: flex; align-items: center; gap: 6px;
   transition: background 0.1s;
@@ -229,7 +230,7 @@ input[type=range] {
   position: fixed; pointer-events: none; z-index: 250; display: none;
   background: rgba(8,14,28,0.88); color: #ffb840;
   padding: 3px 9px; border-radius: 5px; font-size: 11px; white-space: nowrap;
-  border: 1px solid #7a5010; backdrop-filter: blur(4px);
+  border: 1px solid #7a5010; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
 }
 
 /* Long-press ring animation */
@@ -304,20 +305,104 @@ input[type=range] {
   #pose-bone-name { font-size: 12px; max-width: 110px; }
   .pose-axis-btn { padding: 7px 10px; font-size: 11px; }
 }
+
+/* ── Settings modal ─────────────────────────────────── */
+#settings-modal {
+  position: fixed; inset: 0; z-index: 400;
+  background: rgba(6,10,20,0.86);
+  display: none; align-items: center; justify-content: center;
+}
+#settings-modal.open { display: flex; }
+.settings-box {
+  background: #0f1828; border: 1px solid #1e3060;
+  border-radius: 12px; padding: 24px 28px;
+  min-width: 300px; max-width: 380px; width: 90vw;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.75);
+}
+.settings-box h3 {
+  font-size: 14px; font-weight: 700; color: #6ec6f0;
+  margin-bottom: 18px; letter-spacing: 0.05em;
+}
+.settings-row {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 13px;
+}
+.settings-row label { flex: 1; font-size: 11px; color: #8898b8; }
+.settings-row input[type=color] {
+  width: 44px; height: 26px; border: 1px solid #1e3060;
+  border-radius: 4px; background: #0c1220; cursor: pointer; padding: 2px;
+}
+.settings-row input[type=range] { flex: 2; cursor: pointer; accent-color: #4a8ad4; }
+.settings-row input[type=checkbox] { cursor: pointer; accent-color: #4a8ad4; }
+.set-val {
+  width: 36px; font-size: 10px; text-align: right;
+  color: #5a7898; font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+.settings-close-btn {
+  margin-top: 14px; width: 100%; padding: 8px;
+  border: 1px solid #1e3060; background: #172445;
+  color: #8aaad8; border-radius: 6px; cursor: pointer;
+  font-size: 12px; transition: background 0.12s;
+}
+.settings-close-btn:hover { background: #1f3260; }
+
+/* ── VMD transport bar ─────────────────────────────── */
+#vmd-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 140;
+  background: rgba(6,10,20,0.94); border-top: 1px solid #1a3a6a;
+  backdrop-filter: blur(8px);
+  display: none; flex-direction: column;
+  align-items: center; padding: 6px 14px 6px; gap: 5px;
+}
+#vmd-bar.active { display: flex; }
+#vmd-scrubber-row {
+  display: flex; align-items: center; gap: 8px; width: 100%; max-width: 720px;
+}
+#vmd-time {
+  font-size: 10px; color: #4a7a9a; white-space: nowrap;
+  font-variant-numeric: tabular-nums; min-width: 102px;
+}
+#vmd-scrubber { flex: 1; cursor: pointer; accent-color: #3a8aff; }
+#vmd-transport-row { display: flex; align-items: center; gap: 3px; }
+.vmd-btn {
+  padding: 4px 9px; border-radius: 4px; font-size: 12px; cursor: pointer;
+  border: 1px solid #1a3060; background: #0d1828; color: #5a8ab0;
+  transition: background 0.1s, color 0.1s; user-select: none; white-space: nowrap;
+}
+.vmd-btn:hover  { background: #152035; color: #8ab8d8; }
+.vmd-btn:active { background: #1a2f55; }
+.vmd-play-btn   { padding: 4px 14px; font-size: 15px; }
+.vmd-sep { width: 1px; height: 20px; background: #1a3060; margin: 0 3px; flex-shrink: 0; }
+#vmd-name {
+  font-size: 10px; color: #304a68; max-width: 120px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.vmd-close-btn {
+  padding: 4px 8px; border-radius: 4px; margin-left: 4px;
+  border: 1px solid #3a1030; background: #150a10; color: #905070;
+  font-size: 11px; cursor: pointer; transition: background 0.1s;
+}
+.vmd-close-btn:hover { background: #221020; }
+body.vmd-active #pose-bar { bottom: 72px; }
+@media (max-width: 640px) {
+  #vmd-transport-row { flex-wrap: wrap; justify-content: center; }
+  #vmd-name { display: none; }
+}
 </style>
 </head>
 <body>
 
 <!-- ═══ TOOLBAR ══════════════════════════════════════ -->
 <div id="toolbar">
-  <span class="tb-title">MMD Viewer</span>
+  <span class="tb-title">MMP</span>
   <div class="tb-sep"></div>
-  <button class="tb-btn accent" data-action="open">📂 フォルダを開く</button>
+  <button class="tb-btn accent" data-action="open">フォルダを開く</button>
   <div class="tb-sep"></div>
-  <button class="tb-btn" data-action="reset" title="全ボーンを初期位置に戻す">↺ ポーズリセット</button>
-  <button class="tb-btn" data-action="save-pose" title="現在のポーズをJSONで保存">💾 ポーズ保存</button>
-  <button class="tb-btn" data-action="load-pose" title="JSONファイルからポーズを読み込む">📥 ポーズ読込</button>
-  <button class="tb-btn" data-action="screenshot" title="現在の画面をPNGで保存">📷 スクリーンショット</button>
+  <button class="tb-btn" data-action="reset" title="全ボーンを初期位置に戻す">ポーズリセット</button>
+  <button class="tb-btn" data-action="save-pose" title="現在のポーズをJSONで保存">ポーズ保存</button>
+  <button class="tb-btn" data-action="load-pose" title="JSONファイルからポーズを読み込む">ポーズ読込</button>
+  <button class="tb-btn" data-action="screenshot" title="現在の画面をPNGで保存">スクリーンショット</button>
+  <button class="tb-btn" data-action="open-vmd" title="VMDモーションファイルを読み込む">VMD読込（モーション読込）</button>
+  <button class="tb-btn" data-action="open-settings" title="環境設定 (空/床/ライト)">設定</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" data-action="toggle-left"  title="ボーンパネルを開閉">⟨ ボーン</button>
   <button class="tb-btn" data-action="toggle-right" title="マテリアルパネルを開閉">マテリアル ⟩</button>
@@ -349,14 +434,18 @@ input[type=range] {
 
 <!-- ═══ OVERLAY ═══════════════════════════════════════ -->
 <div id="overlay">
-  <div class="ov-logo">MMD PMX Viewer</div>
-  <div class="ov-sub">Appearance Miku ─ あぴミク</div>
+  <div class="ov-logo">MikuMikuPosingr</div>
+  <div class="ov-sub">__s__d__k__</div>
   <div id="ov-dropzone">
     <div class="ov-drop-icon">📁</div>
-    <div>モデルフォルダをここにドロップ</div>
-    <div class="ov-drop-hint">「Appearance Miku」フォルダ全体を選択してください</div>
+    <div>「モデルフォルダ」をここにドロップ</div>
+    <div class="ov-drop-hint">フォルダごとブラウザにドラッグ＆ドロップ</div>
   </div>
   <button id="ov-browse-btn">📂 フォルダを選択して開く</button>
+  <div style="font-size:10px;color:#2a4060;text-align:center;max-width:320px;line-height:1.6;">
+    ボタン使用時: ダイアログで「モデルフォルダ」を開く<br>
+    <b style="color:#3a5880">1回クリックして選択</b>→「開く / Choose」ボタンを押してください
+  </div>
   <div id="ov-spinner"></div>
   <div id="ov-msg"></div>
 </div>
@@ -383,6 +472,67 @@ input[type=range] {
   <div class="pose-sep"></div>
   <button id="pose-done-btn" title="ボーン選択を解除">完了 ✕</button>
 </div>
+
+<!-- ═══ SETTINGS MODAL ══════════════════════════════════ -->
+<div id="settings-modal">
+  <div class="settings-box">
+    <h3>⚙ 環境設定</h3>
+    <div class="settings-row">
+      <label>空の色 (Sky)</label>
+      <input type="color" id="set-sky-color" value="#131929">
+    </div>
+    <div class="settings-row">
+      <label>床の色 (Ground)</label>
+      <input type="color" id="set-ground-color" value="#0c1018">
+    </div>
+    <div class="settings-row">
+      <label>環境光 (Ambient)</label>
+      <input type="range" id="set-ambient" min="0" max="2" step="0.05" value="0.65">
+      <span class="set-val" id="set-ambient-val">0.65</span>
+    </div>
+    <div class="settings-row">
+      <label>メイン光 (Key)</label>
+      <input type="range" id="set-keylight" min="0" max="3" step="0.05" value="1.3">
+      <span class="set-val" id="set-keylight-val">1.30</span>
+    </div>
+    <div class="settings-row">
+      <label>影の濃さ (Shadow)</label>
+      <input type="range" id="set-shadow" min="0" max="1" step="0.05" value="0.5">
+      <span class="set-val" id="set-shadow-val">0.50</span>
+    </div>
+    <div class="settings-row">
+      <label>フォグ (Fog)</label>
+      <input type="checkbox" id="set-fog" checked>
+      <span style="font-size:10px;color:#5a7898">奥行き感</span>
+    </div>
+    <button class="settings-close-btn" id="settings-close-btn">閉じる</button>
+  </div>
+</div>
+
+<!-- ═══ VMD TRANSPORT BAR ═══════════════════════════════ -->
+<div id="vmd-bar">
+  <div id="vmd-scrubber-row">
+    <span id="vmd-time">0:00.0 / 0:00.0</span>
+    <input type="range" id="vmd-scrubber" min="0" max="100" step="0.033" value="0">
+  </div>
+  <div id="vmd-transport-row">
+    <span id="vmd-name">—</span>
+    <div class="vmd-sep"></div>
+    <button class="vmd-btn" id="vmd-to-start" title="最初へ">⏮</button>
+    <button class="vmd-btn" id="vmd-back5"    title="−5秒 (長押しで連続)">◀5s</button>
+    <button class="vmd-btn" id="vmd-back1"    title="−1コマ (長押しで連続)">◀1f</button>
+    <button class="vmd-btn vmd-play-btn" id="vmd-play-pause" title="再生 / 一時停止 [Space]">▶</button>
+    <button class="vmd-btn" id="vmd-fwd1"     title="+1コマ (長押しで連続)">1f▶</button>
+    <button class="vmd-btn" id="vmd-fwd5"     title="+5秒 (長押しで連続)">5s▶</button>
+    <button class="vmd-btn" id="vmd-to-end"   title="最後へ">⏭</button>
+    <div class="vmd-sep"></div>
+    <button class="vmd-btn" id="vmd-save-pose" title="このフレームのスクリーンショットを保存">📷</button>
+    <button class="vmd-close-btn" id="vmd-close-btn" title="モーション解除">✕</button>
+  </div>
+</div>
+
+<!-- hidden VMD file input -->
+<input type="file" id="vmd-input" accept=".vmd" style="display:none">
 
 <!-- ═══ APPLICATION ════════════════════════════════════ -->
 <script type="module">
@@ -415,6 +565,20 @@ const toDeg = r => (r * 180 / Math.PI).toFixed(1) + '°';
 let mmdMesh   = null;
 const fileMap = new Map(); // lowercase filename → blob URL
 
+// VMD animation state — declared here so animate loop can reference them
+let animMixer    = null;
+let animAction   = null;
+let animDuration = 0;
+let currentTime  = 0;
+let isPlaying    = false;
+let animLastTime = 0;
+
+// Interactive posing state — declared here to avoid TDZ error in animate loop
+// (updateGizmo runs synchronously in the first IIFE frame before let declarations below)
+let selectedBoneIdx = null;
+let poseActiveAxis  = 'xy';
+let activePointers  = 0;
+
 // ── Three.js — renderer ───────────────────────────────────────────────────────
 const canvas   = document.getElementById('webgl-canvas');
 const viewport = document.getElementById('viewport');
@@ -443,13 +607,15 @@ const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 1000);
 camera.position.set(0, 14, 32);
 
 // ── Three.js — lights ─────────────────────────────────────────────────────────
-scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+scene.add(ambientLight);
 
 const keyLight = new THREE.DirectionalLight(0xfff5e8, 1.3);
 keyLight.position.set(5, 22, 12);
 keyLight.castShadow = true;
 keyLight.shadow.mapSize.set(2048, 2048);
 Object.assign(keyLight.shadow.camera, { near: 0.5, far: 120, left: -18, right: 18, top: 18, bottom: -18 });
+keyLight.shadow.intensity = 0.5;
 scene.add(keyLight);
 
 const fillLight = new THREE.DirectionalLight(0x8899cc, 0.4);
@@ -605,6 +771,7 @@ onResize();
   requestAnimationFrame(animate);
   controls.update();
   updateGizmo();
+  updateAnimation();
   renderer.render(scene, camera);
 })();
 
@@ -932,6 +1099,11 @@ function setAllMats(visible) {
 
 function resetPose() {
   if (!mmdMesh) return;
+  if (isPlaying && animAction) {
+    isPlaying = false;
+    animAction.paused = true;
+    updateTransportUI();
+  }
   mmdMesh.skeleton.bones.forEach(b => b.rotation.set(0, 0, 0));
   mmdMesh.skeleton.update();
   // Sync all sliders back to 0
@@ -1100,6 +1272,22 @@ function openFolderPicker() {
   folderInput.click();
 }
 
+// ── Folder traversal via FileSystem API (works for folder drops) ──────────────
+async function collectFilesFromEntry(entry, out) {
+  if (!entry) return;
+  if (entry.isFile) {
+    await new Promise(res => entry.file(f => { out.push(f); res(); }, res));
+  } else if (entry.isDirectory) {
+    const reader = entry.createReader();
+    // readEntries may return results in batches; loop until empty
+    let batch;
+    do {
+      batch = await new Promise(res => reader.readEntries(res, () => res([])));
+      await Promise.all(batch.map(child => collectFilesFromEntry(child, out)));
+    } while (batch.length > 0);
+  }
+}
+
 // Drag & drop on the overlay drop zone
 document.addEventListener('dragover', e => {
   e.preventDefault();
@@ -1110,9 +1298,19 @@ document.addEventListener('dragleave', e => {
     ovDropzone.classList.remove('drag-active');
   }
 });
-document.addEventListener('drop', e => {
+document.addEventListener('drop', async e => {
   e.preventDefault();
   ovDropzone.classList.remove('drag-active');
+
+  // Prefer webkitGetAsEntry so folder drops work (dataTransfer.files is empty for folders)
+  const items = Array.from(e.dataTransfer?.items ?? []);
+  if (items.length) {
+    const files = [];
+    await Promise.all(items.map(item => collectFilesFromEntry(item.webkitGetAsEntry?.(), files)));
+    if (files.length) { ingestFiles(files); return; }
+  }
+
+  // Fallback: plain file drag (individual files, no folder)
   if (e.dataTransfer?.files?.length) ingestFiles(e.dataTransfer.files);
 });
 
@@ -1124,13 +1322,15 @@ document.getElementById('toolbar').addEventListener('click', e => {
   const btn = e.target.closest('[data-action]');
   if (!btn) return;
   switch (btn.dataset.action) {
-    case 'open':         openFolderPicker(); break;
-    case 'reset':        resetPose();        break;
-    case 'save-pose':    savePose();         break;
-    case 'load-pose':    loadPoseDialog();   break;
-    case 'screenshot':   doScreenshot();     break;
-    case 'toggle-left':  document.getElementById('sidebar-left').classList.toggle('collapsed');  break;
-    case 'toggle-right': document.getElementById('sidebar-right').classList.toggle('collapsed'); break;
+    case 'open':          openFolderPicker(); break;
+    case 'reset':         resetPose();        break;
+    case 'save-pose':     savePose();         break;
+    case 'load-pose':     loadPoseDialog();   break;
+    case 'screenshot':    doScreenshot();     break;
+    case 'open-vmd':      openVmdPicker();    break;
+    case 'open-settings': openSettings();     break;
+    case 'toggle-left':   document.getElementById('sidebar-left').classList.toggle('collapsed');  break;
+    case 'toggle-right':  document.getElementById('sidebar-right').classList.toggle('collapsed'); break;
   }
 });
 
@@ -1145,9 +1345,7 @@ viewport.addEventListener('dblclick', resetCamera);
 const raycaster = new THREE.Raycaster();
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let selectedBoneIdx  = null;   // currently selected bone (null = none)
-let poseActiveAxis   = 'xy';   // rotation plane: 'xy' | 'z'
-let activePointers   = 0;      // live pointer count on canvas
+// selectedBoneIdx / poseActiveAxis / activePointers declared early (above animate loop)
 
 const gesture = {
   phase:       'idle',   // 'idle' | 'pressing' | 'rotating'
@@ -1401,11 +1599,246 @@ document.getElementById('pose-bar').addEventListener('click', e => {
   if (e.target.closest('#pose-done-btn')) deselectBone();
 });
 
+// ════════════════════════════════════════════════════════════════════════════════
+// ENVIRONMENT SETTINGS
+// ════════════════════════════════════════════════════════════════════════════════
+
+function openSettings() {
+  document.getElementById('settings-modal').classList.add('open');
+}
+
+document.getElementById('set-sky-color').addEventListener('input', e => {
+  const col = new THREE.Color(e.target.value);
+  scene.background = col;
+  if (scene.fog) scene.fog.color.copy(col);
+});
+
+document.getElementById('set-ground-color').addEventListener('input', e => {
+  ground.material.color.set(e.target.value);
+});
+
+document.getElementById('set-ambient').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  ambientLight.intensity = v;
+  document.getElementById('set-ambient-val').textContent = v.toFixed(2);
+});
+
+document.getElementById('set-keylight').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  keyLight.intensity = v;
+  document.getElementById('set-keylight-val').textContent = v.toFixed(2);
+});
+
+document.getElementById('set-shadow').addEventListener('input', e => {
+  const v = parseFloat(e.target.value);
+  keyLight.shadow.intensity = v;
+  document.getElementById('set-shadow-val').textContent = v.toFixed(2);
+});
+
+document.getElementById('set-fog').addEventListener('change', e => {
+  scene.fog = e.target.checked
+    ? new THREE.FogExp2(scene.background.getHex(), 0.008)
+    : null;
+});
+
+document.getElementById('settings-close-btn').addEventListener('click', () =>
+  document.getElementById('settings-modal').classList.remove('open')
+);
+document.getElementById('settings-modal').addEventListener('click', e => {
+  if (e.target.id === 'settings-modal')
+    document.getElementById('settings-modal').classList.remove('open');
+});
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// VMD ANIMATION
+// ════════════════════════════════════════════════════════════════════════════════
+
+const VMD_VIRTUAL = 'motion.vmd';
+const MMD_FPS     = 30;
+const FRAME_DT    = 1 / MMD_FPS;
+
+// updateAnimation — called from the rAF loop every frame
+function updateAnimation() {
+  if (!animMixer || !isPlaying) return;
+  const now = performance.now();
+  const dt  = Math.min((now - animLastTime) / 1000, 0.1); // cap at 100 ms
+  animLastTime = now;
+  if (dt <= 0) return;
+  animMixer.update(dt);
+  currentTime = Math.min(animAction.time, animDuration);
+  if (animAction.time >= animDuration - 0.001) {
+    currentTime = animDuration;
+    isPlaying   = false;
+    animAction.paused = true;
+  }
+  updateTransportUI();
+}
+
+function seekTo(t) {
+  if (!animAction) return;
+  currentTime = Math.max(0, Math.min(animDuration, t));
+  animAction.reset();
+  animAction.enabled = true;
+  animAction.time    = currentTime;
+  animAction.play();
+  animAction.paused  = !isPlaying;
+  animLastTime       = performance.now();
+  animMixer.update(0);
+  updateTransportUI();
+}
+
+function stepFrames(n) { seekTo(currentTime + n * FRAME_DT); }
+
+function playPause() {
+  if (!animAction) return;
+  isPlaying = !isPlaying;
+  if (isPlaying) {
+    if (currentTime >= animDuration - 0.001) { seekTo(0); return; }
+    animAction.paused = false;
+    animLastTime = performance.now();
+  } else {
+    animAction.paused = true;
+  }
+  updateTransportUI();
+}
+
+function fmtTime(s) {
+  const m  = Math.floor(s / 60);
+  const ss = (s % 60).toFixed(1).padStart(4, '0');
+  return `${m}:${ss}`;
+}
+
+function updateTransportUI() {
+  document.getElementById('vmd-time').textContent =
+    `${fmtTime(currentTime)} / ${fmtTime(animDuration)}`;
+  document.getElementById('vmd-scrubber').value = currentTime.toFixed(3);
+  document.getElementById('vmd-play-pause').textContent = isPlaying ? '⏸' : '▶';
+}
+
+// Long-press helpers for frame-step buttons
+let frameHoldId = null;
+function stopFrameHold() {
+  clearTimeout(frameHoldId);
+  clearInterval(frameHoldId);
+  frameHoldId = null;
+}
+
+// ── VMD file picker & loader ───────────────────────────────────────────────────
+function openVmdPicker() {
+  if (!mmdMesh) { alert('先にモデルを読み込んでください。'); return; }
+  document.getElementById('vmd-input').click();
+}
+
+document.getElementById('vmd-input').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) loadVMD(f);
+  e.target.value = '';
+});
+
+function loadVMD(file) {
+  if (!mmdMesh) return;
+  const vmdBlobUrl = URL.createObjectURL(file);
+  const manager   = new THREE.LoadingManager();
+  manager.setURLModifier(url => url === VMD_VIRTUAL ? vmdBlobUrl : url);
+  showOverlayLoading('モーション読み込み中...');
+
+  new MMDLoader(manager).loadAnimation(VMD_VIRTUAL, mmdMesh,
+    clip => {
+      URL.revokeObjectURL(vmdBlobUrl);
+      if (animAction) animAction.stop();
+      if (animMixer)  animMixer.uncacheRoot(mmdMesh);
+
+      animMixer    = new THREE.AnimationMixer(mmdMesh);
+      animAction   = animMixer.clipAction(clip);
+      animAction.setLoop(THREE.LoopOnce);
+      animAction.clampWhenFinished = true;
+      animDuration = clip.duration;
+      isPlaying    = false;
+
+      const scrubber = document.getElementById('vmd-scrubber');
+      scrubber.max   = animDuration.toFixed(3);
+
+      document.getElementById('vmd-name').textContent = file.name.replace(/\.vmd$/i, '');
+      document.getElementById('vmd-bar').classList.add('active');
+      document.body.classList.add('vmd-active');
+      hideOverlay();
+      seekTo(0);
+    },
+    undefined,
+    err => {
+      URL.revokeObjectURL(vmdBlobUrl);
+      console.error('[VMD]', err);
+      showOverlayError('VMD読み込み失敗:\n' + (err?.message ?? String(err)));
+    }
+  );
+}
+
+// ── Transport wiring ───────────────────────────────────────────────────────────
+document.getElementById('vmd-scrubber').addEventListener('input', e => {
+  if (isPlaying) { isPlaying = false; if (animAction) animAction.paused = true; }
+  seekTo(parseFloat(e.target.value));
+});
+
+document.getElementById('vmd-play-pause').addEventListener('click', playPause);
+document.getElementById('vmd-to-start').addEventListener('click', () => seekTo(0));
+document.getElementById('vmd-to-end').addEventListener('click',   () => seekTo(animDuration));
+
+// ±5 s buttons: first press = ±5 s, hold = repeating ±5 s every 200 ms
+for (const [id, sec] of [['vmd-back5', -5], ['vmd-fwd5', 5]]) {
+  const btn = document.getElementById(id);
+  btn.addEventListener('pointerdown', () => {
+    seekTo(currentTime + sec);
+    frameHoldId = setTimeout(() => {
+      frameHoldId = setInterval(() => seekTo(currentTime + sec), 200);
+    }, 400);
+  });
+  btn.addEventListener('pointerup',     stopFrameHold);
+  btn.addEventListener('pointerleave',  stopFrameHold);
+  btn.addEventListener('pointercancel', stopFrameHold);
+}
+
+// ±1 frame buttons: first press = ±1 frame, hold = repeating at 65 ms
+for (const [id, n] of [['vmd-back1', -1], ['vmd-fwd1', 1]]) {
+  const btn = document.getElementById(id);
+  btn.addEventListener('pointerdown', () => {
+    stepFrames(n);
+    frameHoldId = setTimeout(() => {
+      frameHoldId = setInterval(() => stepFrames(n), 65);
+    }, 350);
+  });
+  btn.addEventListener('pointerup',     stopFrameHold);
+  btn.addEventListener('pointerleave',  stopFrameHold);
+  btn.addEventListener('pointercancel', stopFrameHold);
+}
+
+document.getElementById('vmd-save-pose').addEventListener('click', () => {
+  if (isPlaying) { isPlaying = false; if (animAction) animAction.paused = true; updateTransportUI(); }
+  doScreenshot();
+});
+
+document.getElementById('vmd-close-btn').addEventListener('click', () => {
+  if (animAction) animAction.stop();
+  if (animMixer)  animMixer.stopAllAction();
+  animMixer   = null;
+  animAction  = null;
+  isPlaying   = false;
+  currentTime = 0;
+  document.getElementById('vmd-bar').classList.remove('active');
+  document.body.classList.remove('vmd-active');
+  if (mmdMesh) {
+    mmdMesh.skeleton.bones.forEach(b => b.rotation.set(0, 0, 0));
+    mmdMesh.skeleton.update();
+  }
+});
+
+
 // ─── Keyboard shortcuts ────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
   switch (e.key) {
     case 'Escape':         deselectBone();  break;
+    case ' ':              if (animAction) { e.preventDefault(); playPause(); } break;
     case 'r': case 'R':   resetPose();     break;
     case 'f': case 'F':   resetCamera();   break;
     case 'b': case 'B':   document.getElementById('sidebar-left').classList.toggle('collapsed');  break;
