@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MMD PMX Viewer — Appearance Miku あぴミク</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: #141a2e; color: #d8dff0;
+  font: 12px/1.45 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+}
+
+/* ── Toolbar ─────────────────────────────────────────── */
+#toolbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 44px;
+  background: linear-gradient(180deg, #18243f 0%, #101a30 100%);
+  border-bottom: 1px solid #1e2d50;
+  display: flex; align-items: center; gap: 5px; padding: 0 12px;
+  z-index: 100; user-select: none; flex-shrink: 0;
+}
+.tb-title {
+  font-size: 13px; font-weight: 700; color: #6ec6f0;
+  letter-spacing: 0.03em; margin-right: 6px; white-space: nowrap;
+}
+.tb-sep { width: 1px; height: 26px; background: #1e3060; margin: 0 3px; flex-shrink: 0; }
+.tb-btn {
+  padding: 5px 11px; border: 1px solid #243870; border-radius: 5px;
+  background: #172445; color: #b8c8e8; font-size: 11px; cursor: pointer;
+  white-space: nowrap; transition: background 0.12s, border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.tb-btn:hover { background: #1f3260; border-color: #3a62c0; color: #d8e8ff; }
+.tb-btn:active { background: #162040; }
+.tb-btn.accent { background: #1f3a70; border-color: #3a6ad4; color: #90c0ff; }
+.tb-btn.accent:hover { background: #2a4d90; border-color: #5a8aee; }
+.tb-spacer { flex: 1; }
+.tb-hint { font-size: 10px; color: #334; white-space: nowrap; }
+
+/* ── Main layout ─────────────────────────────────────── */
+#main-layout {
+  position: fixed; top: 44px; bottom: 0; left: 0; right: 0;
+  display: flex; overflow: hidden;
+}
+
+/* ── Sidebars ─────────────────────────────────────────── */
+#sidebar-left, #sidebar-right {
+  width: 248px; min-width: 0; flex-shrink: 0;
+  overflow-y: auto; overflow-x: hidden;
+  background: #0f1622;
+  transition: width 0.22s ease;
+}
+#sidebar-left  { border-right: 1px solid #192540; }
+#sidebar-right { border-left:  1px solid #192540; }
+#sidebar-left.collapsed,
+#sidebar-right.collapsed { width: 0; }
+
+/* scrollbar */
+#sidebar-left::-webkit-scrollbar,
+#sidebar-right::-webkit-scrollbar { width: 4px; }
+#sidebar-left::-webkit-scrollbar-track,
+#sidebar-right::-webkit-scrollbar-track { background: transparent; }
+#sidebar-left::-webkit-scrollbar-thumb,
+#sidebar-right::-webkit-scrollbar-thumb { background: #1e3060; border-radius: 2px; }
+
+/* sidebar title bar */
+.sb-title {
+  padding: 8px 10px 7px;
+  font-size: 10px; font-weight: 700; color: #5a9cd8;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  background: #0c1220; border-bottom: 1px solid #192540;
+  position: sticky; top: 0; z-index: 2;
+}
+
+/* search */
+.sb-search { padding: 6px 8px; border-bottom: 1px solid #192540; background: #0c1220; }
+.sb-search input {
+  width: 100%; padding: 5px 8px; border-radius: 4px;
+  border: 1px solid #1e3060; background: #141a2e;
+  color: #b8c8e8; font-size: 11px; outline: none;
+  transition: border-color 0.15s;
+}
+.sb-search input:focus { border-color: #3a62c0; }
+
+/* accordion */
+.ac-group { border-bottom: 1px solid #141f36; }
+.ac-head {
+  padding: 7px 10px; cursor: pointer;
+  background: #0c1220;
+  font-size: 10px; font-weight: 700; color: #7aaad4;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  user-select: none;
+  display: flex; align-items: center; gap: 6px;
+  transition: background 0.1s;
+}
+.ac-head::before {
+  content: '▶'; font-size: 8px; color: #3a5080;
+  transition: transform 0.14s; flex-shrink: 0;
+}
+.ac-head.open::before { transform: rotate(90deg); }
+.ac-head:hover { background: #111b2e; }
+.ac-body { padding: 4px 8px 8px; }
+.ac-body.hidden { display: none; }
+
+/* bone entries */
+.bone-entry { margin-bottom: 8px; }
+.bone-name {
+  font-size: 10px; color: #6ab0e0; margin-bottom: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: default;
+}
+.ik-badge {
+  display: inline-block; font-size: 8px; padding: 0 3px;
+  background: #2a1a40; color: #a070e0; border: 1px solid #4a2a70;
+  border-radius: 2px; margin-left: 4px; vertical-align: middle;
+}
+.axis-row {
+  display: flex; align-items: center; gap: 4px; height: 16px; margin-bottom: 2px;
+}
+.ax-lbl {
+  width: 11px; font-size: 9px; font-weight: 800; flex-shrink: 0; text-align: center;
+}
+.ax-lbl.x { color: #e06060; }
+.ax-lbl.y { color: #60c060; }
+.ax-lbl.z { color: #5090e0; }
+
+input[type=range] {
+  flex: 1; cursor: pointer; accent-color: #e06090;
+  height: 3px;
+}
+.ax-val {
+  width: 42px; font-size: 9px; text-align: right; color: #7888a8; flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* material entries */
+.mat-entry {
+  display: flex; align-items: center; gap: 7px; padding: 4px 2px;
+  border-radius: 3px; transition: background 0.1s; cursor: pointer;
+}
+.mat-entry:hover { background: #141f36; }
+.mat-swatch {
+  width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0;
+  border: 1px solid #2a3050;
+}
+.mat-entry input[type=checkbox] { accent-color: #e06090; cursor: pointer; flex-shrink: 0; }
+.mat-entry label {
+  flex: 1; font-size: 11px; cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: #a8b8d0;
+}
+.mat-sep { height: 1px; background: #192540; margin: 4px 0; }
+
+/* ── Viewport ─────────────────────────────────────────── */
+#viewport { flex: 1; position: relative; overflow: hidden; }
+#webgl-canvas { width: 100%; height: 100%; display: block; outline: none; }
+
+/* ── Overlay ─────────────────────────────────────────── */
+#overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(8, 12, 22, 0.94);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 18px;
+}
+.ov-logo {
+  font-size: 28px; font-weight: 800; color: #6ec6f0;
+  letter-spacing: 3px; text-shadow: 0 0 30px #2468a0;
+}
+.ov-sub { font-size: 12px; color: #3a5070; letter-spacing: 1px; }
+#ov-dropzone {
+  width: 340px; padding: 28px 0;
+  border: 2px dashed #1e3060; border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: #3a5070; font-size: 13px;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+#ov-dropzone.drag-active {
+  border-color: #3a7ad4; color: #7aaaf4; background: rgba(30, 60, 120, 0.2);
+}
+.ov-drop-icon { font-size: 32px; }
+.ov-drop-hint { font-size: 11px; color: #2a3a58; }
+#ov-browse-btn {
+  padding: 9px 24px; border-radius: 7px;
+  border: 1px solid #1e3060; background: #172445;
+  color: #7aaaf4; font-size: 12px; cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+#ov-browse-btn:hover { background: #1f3260; border-color: #3a62c0; }
+#ov-spinner {
+  width: 36px; height: 36px;
+  border: 3px solid #1a2a50; border-top-color: #3a72d4;
+  border-radius: 50%; animation: spin 0.75s linear infinite;
+  display: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#ov-msg {
+  font-size: 12px; color: #b0c0d8; min-height: 18px;
+  text-align: center; max-width: 320px; line-height: 1.5;
+}
+
+/* ── Helper notice ────────────────────────────────────── */
+.notice {
+  padding: 18px 14px; color: #3a5070;
+  font-size: 11px; text-align: center; line-height: 1.7;
+}
+
+/* ── Interactive posing ───────────────────────────────── */
+
+/* Selected bone highlight in sidebar */
+.bone-entry.selected { background: rgba(255,160,50,0.07); border-radius: 4px; }
+.bone-entry.selected .bone-name { color: #ffb040; }
+
+/* Cursor changes when hovering the model */
+#webgl-canvas.bone-hover  { cursor: pointer; }
+#webgl-canvas.bone-rotate { cursor: grabbing; }
+
+/* Floating hover label (desktop) */
+#bone-hover-label {
+  position: fixed; pointer-events: none; z-index: 250; display: none;
+  background: rgba(8,14,28,0.88); color: #ffb840;
+  padding: 3px 9px; border-radius: 5px; font-size: 11px; white-space: nowrap;
+  border: 1px solid #7a5010; backdrop-filter: blur(4px);
+}
+
+/* Long-press ring animation */
+#long-press-ring {
+  position: fixed; pointer-events: none; z-index: 240; display: none;
+  width: 52px; height: 52px; border-radius: 50%;
+  border: 2.5px solid #ffb040;
+  transform: translate(-50%, -50%) scale(0.3);
+  opacity: 0; transition: none;
+}
+#long-press-ring.pop {
+  animation: lp-pop 0.28s ease-out forwards;
+}
+@keyframes lp-pop {
+  0%   { transform: translate(-50%,-50%) scale(0.3); opacity: 0.9; }
+  60%  { transform: translate(-50%,-50%) scale(1.1); opacity: 0.7; }
+  100% { transform: translate(-50%,-50%) scale(1.0); opacity: 0; }
+}
+
+/* Pose mode bottom bar */
+#pose-bar {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  height: 56px; z-index: 150;
+  background: rgba(8,13,26,0.93);
+  border-top: 1px solid #c07010;
+  backdrop-filter: blur(8px);
+  display: none; align-items: center; justify-content: center;
+  gap: 10px; padding: 0 16px;
+  transition: opacity 0.15s;
+}
+#pose-bar.active { display: flex; }
+
+/* Bone name display in pose bar */
+#pose-bone-name {
+  font-size: 13px; font-weight: 700; color: #ffb040;
+  max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex-shrink: 0;
+}
+.pose-sep { width: 1px; height: 28px; background: #3a2800; flex-shrink: 0; }
+
+/* Axis selector buttons */
+.pose-axis-btn {
+  padding: 6px 13px; border-radius: 5px; font-size: 12px; cursor: pointer;
+  border: 1px solid #3a3010; background: #1a1a08; color: #887040;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+}
+.pose-axis-btn.on  { background: #3a2400; border-color: #d08020; color: #ffb040; }
+.pose-axis-btn:hover { border-color: #806030; color: #ccaa60; }
+
+/* Rotation mode label in pose bar */
+#pose-mode-label {
+  font-size: 10px; color: #806040;
+  flex: 1; text-align: center; pointer-events: none;
+}
+
+/* Done / deselect button */
+#pose-done-btn {
+  padding: 7px 16px; border-radius: 5px; font-size: 12px; cursor: pointer;
+  border: 1px solid #a04060; background: #28000e; color: #ff80a0;
+  transition: background 0.12s;
+  flex-shrink: 0;
+}
+#pose-done-btn:hover { background: #3a0018; }
+
+/* Hide toolbar hint on small screens */
+@media (max-width: 640px) {
+  .tb-hint { display: none; }
+  .tb-sep:last-of-type { display: none; }
+  #sidebar-left, #sidebar-right { width: 0; }
+  #pose-bar { height: 62px; gap: 7px; }
+  #pose-bone-name { font-size: 12px; max-width: 110px; }
+  .pose-axis-btn { padding: 7px 10px; font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ TOOLBAR ══════════════════════════════════════ -->
+<div id="toolbar">
+  <span class="tb-title">MMD Viewer</span>
+  <div class="tb-sep"></div>
+  <button class="tb-btn accent" data-action="open">📂 フォルダを開く</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" data-action="reset" title="全ボーンを初期位置に戻す">↺ ポーズリセット</button>
+  <button class="tb-btn" data-action="save-pose" title="現在のポーズをJSONで保存">💾 ポーズ保存</button>
+  <button class="tb-btn" data-action="load-pose" title="JSONファイルからポーズを読み込む">📥 ポーズ読込</button>
+  <button class="tb-btn" data-action="screenshot" title="現在の画面をPNGで保存">📷 スクリーンショット</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" data-action="toggle-left"  title="ボーンパネルを開閉">⟨ ボーン</button>
+  <button class="tb-btn" data-action="toggle-right" title="マテリアルパネルを開閉">マテリアル ⟩</button>
+  <div class="tb-spacer"></div>
+  <span class="tb-hint" id="tb-hint">マウスドラッグ: 回転 &nbsp;|&nbsp; ホイール: ズーム &nbsp;|&nbsp; 右ドラッグ: 移動</span>
+</div>
+
+<!-- ═══ MAIN LAYOUT ═══════════════════════════════════ -->
+<div id="main-layout">
+
+  <!-- Left sidebar: bone controls -->
+  <div id="sidebar-left">
+    <div class="sb-title">ボーン (Bones)</div>
+    <div class="notice">モデルを読み込むと<br>ボーン操作パネルが表示されます</div>
+  </div>
+
+  <!-- Viewport -->
+  <div id="viewport">
+    <canvas id="webgl-canvas" tabindex="0"></canvas>
+  </div>
+
+  <!-- Right sidebar: material visibility -->
+  <div id="sidebar-right">
+    <div class="sb-title">マテリアル</div>
+    <div class="notice">モデルを読み込むと<br>マテリアル一覧が表示されます</div>
+  </div>
+
+</div>
+
+<!-- ═══ OVERLAY ═══════════════════════════════════════ -->
+<div id="overlay">
+  <div class="ov-logo">MMD PMX Viewer</div>
+  <div class="ov-sub">Appearance Miku ─ あぴミク</div>
+  <div id="ov-dropzone">
+    <div class="ov-drop-icon">📁</div>
+    <div>モデルフォルダをここにドロップ</div>
+    <div class="ov-drop-hint">「Appearance Miku」フォルダ全体を選択してください</div>
+  </div>
+  <button id="ov-browse-btn">📂 フォルダを選択して開く</button>
+  <div id="ov-spinner"></div>
+  <div id="ov-msg"></div>
+</div>
+
+<!-- hidden file input -->
+<input type="file" id="folder-input" webkitdirectory multiple style="display:none">
+
+<!-- ═══ INTERACTIVE POSING UI ════════════════════════════ -->
+
+<!-- Hover label: shown near cursor on desktop when hovering over model -->
+<div id="bone-hover-label"></div>
+
+<!-- Long-press ring: visual feedback during 260ms hold -->
+<div id="long-press-ring"></div>
+
+<!-- Pose bar: shown at bottom when a bone is selected -->
+<div id="pose-bar">
+  <span id="pose-bone-name">—</span>
+  <div class="pose-sep"></div>
+  <span id="pose-mode-label">長押し＋ドラッグで回転</span>
+  <div class="pose-sep"></div>
+  <button class="pose-axis-btn on" data-axis="xy" title="水平ドラッグ=Y軸、垂直ドラッグ=X軸">↔↕ XY</button>
+  <button class="pose-axis-btn"    data-axis="z"  title="水平ドラッグ=Z軸（ロール）">↻ Z</button>
+  <div class="pose-sep"></div>
+  <button id="pose-done-btn" title="ボーン選択を解除">完了 ✕</button>
+</div>
+
+<!-- ═══ APPLICATION ════════════════════════════════════ -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { MMDLoader }     from 'three/addons/loaders/MMDLoader.js';
+
+// ── Bone group definitions (matched to Appearance Miku PMX bone list) ────────
+const BONE_GROUPS = [
+  { label: '体 / Body Core',             indices: [0, 5, 6, 15, 16],                        open: true  },
+  { label: '頭 / Head',                  indices: [67, 68, 69, 113, 114, 115, 70, 71],       open: true  },
+  { label: '右腕 / R. Arm',              indices: [21, 22, 23, 24, 25, 26, 27],              open: false },
+  { label: '右手指 / R. Fingers',        indices: [28,29,30, 40,41,42, 37,38,39, 34,35,36, 31,32,33], open: false },
+  { label: '左腕 / L. Arm',              indices: [44, 45, 46, 47, 48, 49, 50],              open: false },
+  { label: '左手指 / L. Fingers',        indices: [51,52,53, 63,64,65, 60,61,62, 57,58,59, 54,55,56], open: false },
+  { label: '右足 / R. Leg',              indices: [11, 12, 13, 14],                          open: false },
+  { label: '左足 / L. Leg',              indices: [7, 8, 9, 10],                             open: false },
+  { label: '足IK / Foot IK',             indices: [1, 2, 3, 4],                              open: false },
+  { label: 'ネクタイ / Necktie',         indices: [17, 18, 19, 20],                          open: false },
+  { label: '前髪 / Front Hair',          indices: [72, 73, 74, 75, 76, 77],                  open: false },
+  { label: '右ツインテ / R. Twintail',   indices: [79,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95], open: false },
+  { label: '左ツインテ / L. Twintail',   indices: [96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112], open: false },
+  { label: 'スカート / Skirt',           indices: [118,119,120,121,122,123,124,125,126,127,128,129], open: false },
+  { label: '袖 / Sleeve',               indices: [43, 66],                                  open: false },
+];
+const IK_INDICES = new Set([1, 2, 3, 4]);
+const toDeg = r => (r * 180 / Math.PI).toFixed(1) + '°';
+
+// ── Application state ─────────────────────────────────────────────────────────
+let mmdMesh   = null;
+const fileMap = new Map(); // lowercase filename → blob URL
+
+// ── Three.js — renderer ───────────────────────────────────────────────────────
+const canvas   = document.getElementById('webgl-canvas');
+const viewport = document.getElementById('viewport');
+
+const renderer = new THREE.WebGLRenderer({
+  canvas,
+  antialias: true,
+  preserveDrawingBuffer: true,  // needed for screenshot via toDataURL
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled   = true;
+renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace    = THREE.SRGBColorSpace;
+renderer.toneMapping         = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
+// ── Three.js — scene ──────────────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x131929);
+
+// Fog — subtle depth cue
+scene.fog = new THREE.FogExp2(0x131929, 0.008);
+
+// ── Three.js — camera ─────────────────────────────────────────────────────────
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 1000);
+camera.position.set(0, 14, 32);
+
+// ── Three.js — lights ─────────────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xffffff, 0.65));
+
+const keyLight = new THREE.DirectionalLight(0xfff5e8, 1.3);
+keyLight.position.set(5, 22, 12);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+Object.assign(keyLight.shadow.camera, { near: 0.5, far: 120, left: -18, right: 18, top: 18, bottom: -18 });
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x8899cc, 0.4);
+fillLight.position.set(-6, 8, -10);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xccddff, 0.25);
+rimLight.position.set(0, 5, -20);
+scene.add(rimLight);
+
+// ── Three.js — ground & grid ──────────────────────────────────────────────────
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(80, 80),
+  new THREE.MeshStandardMaterial({ color: 0x0c1018, roughness: 1, metalness: 0 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+scene.add(new THREE.GridHelper(50, 50, 0x1a2a48, 0x131f38));
+
+// ── Bone rotation gizmo ───────────────────────────────────────────────────────
+// Three rings (X=red / Y=green / Z=blue) + axis lines + center sphere.
+// Positioned at selected bone world-position; scales with camera distance.
+const boneGizmo = (() => {
+  const g = new THREE.Group();
+
+  const RING_R    = 1.0;
+  const RING_TUBE = 0.032;
+  const AXIS_LEN  = 1.35;
+
+  const mkMat = (color, opacity = 0.85) =>
+    new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity, side: THREE.DoubleSide });
+
+  // Ring in YZ plane → represents rotation around X axis (red)
+  const matX = mkMat(0xff3333);
+  const ringX = new THREE.Mesh(new THREE.TorusGeometry(RING_R, RING_TUBE, 6, 52), matX);
+  ringX.rotation.y = Math.PI / 2;
+
+  // Ring in XZ plane → represents rotation around Y axis (green)
+  const matY = mkMat(0x33ee44);
+  const ringY = new THREE.Mesh(new THREE.TorusGeometry(RING_R, RING_TUBE, 6, 52), matY);
+  ringY.rotation.x = Math.PI / 2;
+
+  // Ring in XY plane → represents rotation around Z axis (blue)
+  const matZ = mkMat(0x3399ff);
+  const ringZ = new THREE.Mesh(new THREE.TorusGeometry(RING_R, RING_TUBE, 6, 52), matZ);
+
+  // Axis lines
+  const mkLine = (x1,y1,z1, x2,y2,z2, color) => {
+    const line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x1,y1,z1), new THREE.Vector3(x2,y2,z2)
+      ]),
+      new THREE.LineBasicMaterial({ color, depthTest: false })
+    );
+    line.renderOrder = 10;
+    return line;
+  };
+  const L = AXIS_LEN;
+  const axX = mkLine(-L,0,0,  L,0,0,  0xff3333);
+  const axY = mkLine(0,-L,0,  0,L,0,  0x33ee44);
+  const axZ = mkLine(0,0,-L,  0,0,L,  0x3399ff);
+
+  // Axis arrowheads (small cones)
+  const mkArrow = (color, pos, rot) => {
+    const m = new THREE.Mesh(
+      new THREE.ConeGeometry(0.06, 0.22, 6),
+      new THREE.MeshBasicMaterial({ color, depthTest: false })
+    );
+    m.position.set(...pos);
+    m.rotation.set(...rot);
+    m.renderOrder = 10;
+    return m;
+  };
+  const arX = mkArrow(0xff3333, [ L, 0, 0], [0, 0, -Math.PI/2]);
+  const arY = mkArrow(0x33ee44, [0,  L, 0], [0, 0, 0]);
+  const arZ = mkArrow(0x3399ff, [0, 0,  L], [Math.PI/2, 0, 0]);
+
+  // Center sphere
+  const matSph = new THREE.MeshBasicMaterial({ color: 0xffeedd, depthTest: false, transparent: true, opacity: 0.9 });
+  const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), matSph);
+  sphere.renderOrder = 10;
+
+  [ringX, ringY, ringZ, axX, axY, axZ, arX, arY, arZ, sphere].forEach(o => {
+    o.renderOrder = 10;
+    g.add(o);
+  });
+
+  g.visible = false;
+  scene.add(g);
+
+  // Expose material refs for opacity control in updateGizmo()
+  g._matX = matX; g._matY = matY; g._matZ = matZ;
+  return g;
+})();
+
+// Called every frame to keep the gizmo aligned to the selected bone
+function updateGizmo() {
+  // poseActiveAxis / selectedBoneIdx are declared later in the INTERACTIVE POSING section.
+  // Since updateGizmo() is only ever invoked from rAF (after module init completes), they're ready.
+  if (typeof selectedBoneIdx === 'undefined' || selectedBoneIdx === null || !mmdMesh) {
+    boneGizmo.visible = false;
+    return;
+  }
+  const bone = mmdMesh.skeleton.bones[selectedBoneIdx];
+  if (!bone) { boneGizmo.visible = false; return; }
+
+  // Follow bone world position
+  bone.getWorldPosition(boneGizmo.position);
+
+  // Keep constant screen size regardless of camera distance
+  const dist  = camera.position.distanceTo(boneGizmo.position);
+  boneGizmo.scale.setScalar(Math.max(0.35, dist * 0.062));
+
+  // Highlight active rotation rings; dim the others
+  const axis = (typeof poseActiveAxis !== 'undefined') ? poseActiveAxis : 'xy';
+  if (axis === 'z') {
+    boneGizmo._matX.opacity = 0.18;
+    boneGizmo._matY.opacity = 0.18;
+    boneGizmo._matZ.opacity = 0.90;
+  } else {
+    boneGizmo._matX.opacity = 0.90;
+    boneGizmo._matY.opacity = 0.90;
+    boneGizmo._matZ.opacity = 0.18;
+  }
+
+  boneGizmo.visible = true;
+}
+
+// ── OrbitControls ─────────────────────────────────────────────────────────────
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 10, 0);
+controls.enableDamping   = true;
+controls.dampingFactor   = 0.08;
+controls.minDistance     = 1.5;
+controls.maxDistance     = 100;
+controls.maxPolarAngle   = Math.PI * 0.95;
+controls.update();
+
+// ── Resize handler ────────────────────────────────────────────────────────────
+function onResize() {
+  const w = viewport.clientWidth, h = viewport.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+// ── Render loop ───────────────────────────────────────────────────────────────
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  updateGizmo();
+  renderer.render(scene, camera);
+})();
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// FILE LOADING
+// ════════════════════════════════════════════════════════════════════════════════
+
+// Convert BMP / SPH / SPA blobs → PNG blob URL via <canvas>
+// (Three.js TextureLoader decodes via <img>; most browsers handle BMP but
+//  canvas conversion is more reliable and required for sphere-map textures.)
+async function imgBlobToPngUrl(blob) {
+  return new Promise(resolve => {
+    const srcUrl = URL.createObjectURL(blob);
+    const img    = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width  = img.naturalWidth  || img.width;
+      c.height = img.naturalHeight || img.height;
+      c.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(srcUrl);
+      c.toBlob(png => resolve(URL.createObjectURL(png)), 'image/png');
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(srcUrl);
+      resolve(URL.createObjectURL(blob)); // fallback — pass original
+    };
+    img.src = srcUrl;
+  });
+}
+
+// Accepts a FileList from drag-drop or file picker
+async function ingestFiles(fileList) {
+  showOverlayLoading('ファイルを準備中...');
+
+  // Clean up previous session
+  for (const url of fileMap.values()) URL.revokeObjectURL(url);
+  fileMap.clear();
+
+  const files  = Array.from(fileList);
+  const pmxFile = files.find(f => f.name.toLowerCase().endsWith('.pmx'));
+  if (!pmxFile) {
+    showOverlayError('.pmx ファイルが見つかりませんでした。\n「Appearance Miku」フォルダ全体を選択してください。');
+    return;
+  }
+
+  // Build fileMap concurrently — convert BMP/SPA/SPH to PNG for reliability
+  await Promise.all(files.map(async file => {
+    const key = file.name.toLowerCase();
+    const ext = key.split('.').pop();
+    if (ext === 'bmp' || ext === 'spa' || ext === 'sph') {
+      fileMap.set(key, await imgBlobToPngUrl(file));
+    } else {
+      fileMap.set(key, URL.createObjectURL(file));
+    }
+  }));
+
+  loadModel(fileMap.get(pmxFile.name.toLowerCase()));
+}
+
+// ── MMDLoader ─────────────────────────────────────────────────────────────────
+// MMDLoader determines format (PMX/PMD) by checking the URL extension.
+// Blob URLs (blob:null/uuid...) have no extension → "Unknown model file extension" error.
+// Fix: pass a fake URL 'model.pmx' to MMDLoader and redirect it to the actual blob URL
+// via the LoadingManager URL modifier.
+const PMX_VIRTUAL_URL = 'model.pmx';
+
+function loadModel(pmxBlobUrl) {
+  showOverlayLoading('モデルを読み込み中...');
+
+  const manager = new THREE.LoadingManager();
+  manager.setURLModifier(url => {
+    // Redirect the virtual PMX URL to the actual blob
+    if (url === PMX_VIRTUAL_URL) return pmxBlobUrl;
+    // Resolve texture / toon filenames case-insensitively
+    const bare = url.replace(/\\/g, '/').split('/').pop().toLowerCase();
+    if (fileMap.has(bare)) return fileMap.get(bare);
+    return url; // unknown resource — will 404 silently
+  });
+
+  // Dispose previous mesh
+  if (mmdMesh) {
+    scene.remove(mmdMesh);
+    mmdMesh.geometry?.dispose();
+    const mats = Array.isArray(mmdMesh.material) ? mmdMesh.material : [mmdMesh.material];
+    mats.forEach(m => { m.map?.dispose(); m.envMap?.dispose(); m.dispose(); });
+    mmdMesh = null;
+  }
+
+  new MMDLoader(manager).load(
+    PMX_VIRTUAL_URL,  // fake .pmx URL so MMDLoader picks the correct parser
+    mesh => {
+      mmdMesh = mesh;
+      mesh.castShadow    = true;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+
+      fitCamera(mesh);
+      buildBonePanel(mesh);
+      buildMaterialPanel(mesh);
+      hideOverlay();
+    },
+    xhr => {
+      if (xhr.total > 0) {
+        showOverlayLoading(`読み込み中… ${Math.round(xhr.loaded / xhr.total * 100)}%`);
+      }
+    },
+    err => {
+      console.error('[MMDLoader]', err);
+      showOverlayError('ロードに失敗しました:\n' + (err?.message ?? String(err)));
+    }
+  );
+}
+
+// Auto-fit camera to model bounding box
+function fitCamera(mesh) {
+  const box    = new THREE.Box3().setFromObject(mesh);
+  const center = box.getCenter(new THREE.Vector3());
+  const size   = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const fovRad = camera.fov * Math.PI / 180;
+  const dist   = (maxDim * 0.5) / Math.tan(fovRad * 0.5) * 1.75;
+
+  controls.target.copy(center);
+  camera.position.set(center.x, center.y + size.y * 0.08, center.z + dist);
+  camera.lookAt(center);
+  controls.update();
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// BONE PANEL
+// ════════════════════════════════════════════════════════════════════════════════
+
+function buildBonePanel(mesh) {
+  const sidebar = document.getElementById('sidebar-left');
+  sidebar.innerHTML = '';
+  sidebar.appendChild(makeSbTitle('ボーン (Bones)'));
+
+  // Search filter
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'sb-search';
+  const searchEl = document.createElement('input');
+  searchEl.type        = 'text';
+  searchEl.placeholder = 'ボーン名で検索…';
+  searchEl.addEventListener('input', () => {
+    const q = searchEl.value.toLowerCase();
+    sidebar.querySelectorAll('.bone-entry').forEach(el => {
+      el.style.display = el.dataset.boneName.includes(q) ? '' : 'none';
+    });
+  });
+  searchWrap.appendChild(searchEl);
+  sidebar.appendChild(searchWrap);
+
+  const bones    = mesh.skeleton.bones;
+  const mmdBones = mesh.userData?.MMD?.bones ?? [];
+  const assigned = new Set();
+
+  for (const group of BONE_GROUPS) {
+    const valid = group.indices.filter(i => i < bones.length);
+    if (!valid.length) continue;
+    valid.forEach(i => assigned.add(i));
+
+    const { root, body } = makeAccordion(group.label, group.open);
+    valid.forEach(i => {
+      const namePri = mmdBones[i]?.name ?? '';
+      const nameSec = mmdBones[i]?.englishName ?? '';
+      const display = namePri || nameSec || `Bone ${i}`;
+      body.appendChild(makeBoneEntry(bones[i], display, i, IK_INDICES.has(i)));
+    });
+    sidebar.appendChild(root);
+  }
+
+  // "Other" group for any remaining bones
+  const others = bones.map((_, i) => i).filter(i => !assigned.has(i));
+  if (others.length) {
+    const { root, body } = makeAccordion('その他 / Other', false);
+    others.forEach(i => {
+      const name = mmdBones[i]?.name || `Bone ${i}`;
+      body.appendChild(makeBoneEntry(bones[i], name, i, false));
+    });
+    sidebar.appendChild(root);
+  }
+}
+
+function makeBoneEntry(bone, displayName, idx, isIK) {
+  const wrap = document.createElement('div');
+  wrap.className      = 'bone-entry';
+  wrap.dataset.boneIdx  = idx;
+  wrap.dataset.boneName = displayName.toLowerCase();
+
+  // Name row
+  const nameEl = document.createElement('div');
+  nameEl.className = 'bone-name';
+  nameEl.title     = displayName;
+  nameEl.textContent = displayName;
+
+  if (isIK) {
+    const badge = document.createElement('span');
+    badge.className   = 'ik-badge';
+    badge.textContent = 'IK';
+    badge.title       = '物理なしモードではIKは機能しません';
+    nameEl.appendChild(badge);
+  }
+  wrap.appendChild(nameEl);
+
+  // X / Y / Z sliders
+  for (const axis of ['x', 'y', 'z']) {
+    const row = document.createElement('div');
+    row.className = 'axis-row';
+
+    const lbl       = document.createElement('span');
+    lbl.className   = `ax-lbl ${axis}`;
+    lbl.textContent = axis.toUpperCase();
+
+    const slider    = document.createElement('input');
+    slider.type     = 'range';
+    slider.min      = -Math.PI;
+    slider.max      =  Math.PI;
+    slider.step     = 0.005;
+    slider.value    = bone.rotation[axis];
+    slider.dataset.boneIdx = idx;
+    slider.dataset.axis    = axis;
+
+    const valEl       = document.createElement('span');
+    valEl.className   = 'ax-val';
+    valEl.textContent = toDeg(bone.rotation[axis]);
+
+    slider.addEventListener('input', () => {
+      bone.rotation[axis] = parseFloat(slider.value);
+      valEl.textContent   = toDeg(bone.rotation[axis]);
+      mmdMesh?.skeleton.update();
+    });
+
+    row.append(lbl, slider, valEl);
+    wrap.appendChild(row);
+  }
+  return wrap;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// MATERIAL PANEL
+// ════════════════════════════════════════════════════════════════════════════════
+
+function buildMaterialPanel(mesh) {
+  const sidebar = document.getElementById('sidebar-right');
+  sidebar.innerHTML = '';
+  sidebar.appendChild(makeSbTitle('マテリアル (Materials)'));
+
+  const mmdMats = mesh.userData?.MMD?.materials ?? [];
+  const mats    = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+
+  // "Show all / Hide all" buttons
+  const controls2 = document.createElement('div');
+  controls2.style.cssText = 'display:flex;gap:6px;padding:6px 8px;border-bottom:1px solid #192540;';
+  const mkCtrlBtn = (label, fn) => {
+    const b = document.createElement('button');
+    b.className   = 'tb-btn';
+    b.textContent = label;
+    b.style.cssText = 'padding:3px 8px;font-size:10px;flex:1;';
+    b.addEventListener('click', fn);
+    return b;
+  };
+  controls2.appendChild(mkCtrlBtn('全表示', () => setAllMats(true)));
+  controls2.appendChild(mkCtrlBtn('全非表示', () => setAllMats(false)));
+  sidebar.appendChild(controls2);
+
+  const { root, body } = makeAccordion('表示切替 (Visibility)', true);
+
+  mats.forEach((mat, i) => {
+    const entry = document.createElement('div');
+    entry.className = 'mat-entry';
+
+    // Color swatch from diffuse
+    const swatch      = document.createElement('div');
+    swatch.className  = 'mat-swatch';
+    const c           = mat.color ?? new THREE.Color(0.5, 0.5, 0.5);
+    swatch.style.background = `rgb(${~~(c.r * 255)},${~~(c.g * 255)},${~~(c.b * 255)})`;
+
+    // Checkbox
+    const cb    = document.createElement('input');
+    cb.type     = 'checkbox';
+    cb.checked  = true;
+    cb.id       = `mat-cb-${i}`;
+    cb.addEventListener('change', () => { mat.visible = cb.checked; });
+
+    // Label
+    const lbl       = document.createElement('label');
+    lbl.htmlFor     = `mat-cb-${i}`;
+    const matName   = mmdMats[i]?.name || `Material ${i}`;
+    lbl.textContent = matName;
+    lbl.title       = matName;
+
+    entry.append(swatch, cb, lbl);
+    body.appendChild(entry);
+  });
+
+  sidebar.appendChild(root);
+
+  // Morph/shape-key section header (read-only info for now)
+  const morphCount = mesh.morphTargetInfluences?.length ?? 0;
+  if (morphCount > 0) {
+    const info = document.createElement('div');
+    info.style.cssText = 'padding:8px 10px 4px;font-size:10px;color:#3a5070;border-top:1px solid #192540;';
+    info.textContent   = `モーフ(表情): ${morphCount} 個`;
+    sidebar.appendChild(info);
+  }
+}
+
+function setAllMats(visible) {
+  if (!mmdMesh) return;
+  const mats = Array.isArray(mmdMesh.material) ? mmdMesh.material : [mmdMesh.material];
+  mats.forEach((m, i) => {
+    m.visible = visible;
+    const cb = document.getElementById(`mat-cb-${i}`);
+    if (cb) cb.checked = visible;
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// TOOLBAR ACTIONS
+// ════════════════════════════════════════════════════════════════════════════════
+
+function resetPose() {
+  if (!mmdMesh) return;
+  mmdMesh.skeleton.bones.forEach(b => b.rotation.set(0, 0, 0));
+  mmdMesh.skeleton.update();
+  // Sync all sliders back to 0
+  document.querySelectorAll('input[type=range][data-bone-idx]').forEach(s => {
+    s.value = 0;
+    const valEl = s.closest('.axis-row')?.querySelector('.ax-val');
+    if (valEl) valEl.textContent = '0.0°';
+  });
+}
+
+function savePose() {
+  if (!mmdMesh) return;
+  const mmdBones = mmdMesh.userData?.MMD?.bones ?? [];
+  const payload  = {
+    version: 1,
+    model:   'Appearance Miku',
+    bones:   mmdMesh.skeleton.bones.map((b, i) => ({
+      index: i,
+      name:  mmdBones[i]?.name ?? '',
+      rx: b.rotation.x,
+      ry: b.rotation.y,
+      rz: b.rotation.z,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: 'miku-pose.json' });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function loadPoseDialog() {
+  const inp  = document.createElement('input');
+  inp.type   = 'file';
+  inp.accept = '.json,application/json';
+  inp.onchange = e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try   { applyPose(JSON.parse(ev.target.result)); }
+      catch (err) { alert('ポーズJSONが無効です:\n' + err.message); }
+    };
+    reader.readAsText(f);
+  };
+  inp.click();
+}
+
+function applyPose(data) {
+  if (!mmdMesh || data.version !== 1) {
+    alert('このポーズファイルは互換性がありません (version !== 1)');
+    return;
+  }
+  for (const entry of data.bones) {
+    const bone = mmdMesh.skeleton.bones[entry.index];
+    if (bone) bone.rotation.set(entry.rx, entry.ry, entry.rz);
+  }
+  mmdMesh.skeleton.update();
+  // Sync sliders
+  document.querySelectorAll('input[type=range][data-bone-idx]').forEach(s => {
+    const bone = mmdMesh.skeleton.bones[+s.dataset.boneIdx];
+    if (!bone) return;
+    const v   = bone.rotation[s.dataset.axis];
+    s.value   = v;
+    const valEl = s.closest('.axis-row')?.querySelector('.ax-val');
+    if (valEl) valEl.textContent = toDeg(v);
+  });
+}
+
+function doScreenshot() {
+  // Force render to ensure preserveDrawingBuffer captures latest frame
+  renderer.render(scene, camera);
+  const a = Object.assign(document.createElement('a'), {
+    href:     renderer.domElement.toDataURL('image/png'),
+    download: 'miku-pose.png',
+  });
+  a.click();
+}
+
+function resetCamera() {
+  if (mmdMesh) {
+    fitCamera(mmdMesh);
+  } else {
+    camera.position.set(0, 14, 32);
+    controls.target.set(0, 10, 0);
+    controls.update();
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// OVERLAY HELPERS
+// ════════════════════════════════════════════════════════════════════════════════
+
+const ovDropzone  = document.getElementById('ov-dropzone');
+const ovBrowseBtn = document.getElementById('ov-browse-btn');
+const ovSpinner   = document.getElementById('ov-spinner');
+const ovMsg       = document.getElementById('ov-msg');
+
+function showOverlayLoading(msg) {
+  document.getElementById('overlay').style.display = 'flex';
+  ovDropzone.style.display  = 'none';
+  ovBrowseBtn.style.display = 'none';
+  ovSpinner.style.display   = 'block';
+  ovMsg.style.color         = '#8ab8e0';
+  ovMsg.textContent         = msg;
+}
+
+function showOverlayError(msg) {
+  document.getElementById('overlay').style.display = 'flex';
+  ovDropzone.style.display  = 'flex';
+  ovBrowseBtn.style.display = '';
+  ovSpinner.style.display   = 'none';
+  ovMsg.style.color         = '#e06060';
+  ovMsg.textContent         = msg;
+}
+
+function hideOverlay() {
+  document.getElementById('overlay').style.display = 'none';
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// DOM HELPERS
+// ════════════════════════════════════════════════════════════════════════════════
+
+function makeSbTitle(text) {
+  const el = document.createElement('div');
+  el.className   = 'sb-title';
+  el.textContent = text;
+  return el;
+}
+
+function makeAccordion(label, open) {
+  const root   = document.createElement('div');
+  root.className = 'ac-group';
+
+  const head   = document.createElement('div');
+  head.className = 'ac-head' + (open ? ' open' : '');
+  head.textContent = label;
+
+  const body   = document.createElement('div');
+  body.className = 'ac-body' + (open ? '' : ' hidden');
+
+  head.addEventListener('click', () => {
+    head.classList.toggle('open');
+    body.classList.toggle('hidden');
+  });
+
+  root.append(head, body);
+  return { root, body };
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ════════════════════════════════════════════════════════════════════════════════
+
+const folderInput = document.getElementById('folder-input');
+folderInput.addEventListener('change', e => {
+  if (e.target.files.length) ingestFiles(e.target.files);
+});
+
+function openFolderPicker() {
+  folderInput.value = ''; // reset so same folder re-triggers change
+  folderInput.click();
+}
+
+// Drag & drop on the overlay drop zone
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+  ovDropzone.classList.add('drag-active');
+});
+document.addEventListener('dragleave', e => {
+  if (!e.relatedTarget || !document.body.contains(e.relatedTarget)) {
+    ovDropzone.classList.remove('drag-active');
+  }
+});
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  ovDropzone.classList.remove('drag-active');
+  if (e.dataTransfer?.files?.length) ingestFiles(e.dataTransfer.files);
+});
+
+// Overlay browse button
+document.getElementById('ov-browse-btn').addEventListener('click', openFolderPicker);
+
+// Toolbar button dispatcher
+document.getElementById('toolbar').addEventListener('click', e => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  switch (btn.dataset.action) {
+    case 'open':         openFolderPicker(); break;
+    case 'reset':        resetPose();        break;
+    case 'save-pose':    savePose();         break;
+    case 'load-pose':    loadPoseDialog();   break;
+    case 'screenshot':   doScreenshot();     break;
+    case 'toggle-left':  document.getElementById('sidebar-left').classList.toggle('collapsed');  break;
+    case 'toggle-right': document.getElementById('sidebar-right').classList.toggle('collapsed'); break;
+  }
+});
+
+// Double-click viewport → reset camera
+viewport.addEventListener('dblclick', resetCamera);
+
+// ════════════════════════════════════════════════════════════════════════════════
+// INTERACTIVE BONE POSING — click / long-press-drag on 3D model
+// Works with mouse (desktop) and touch/stylus (mobile/tablet) via Pointer Events.
+// ════════════════════════════════════════════════════════════════════════════════
+
+const raycaster = new THREE.Raycaster();
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let selectedBoneIdx  = null;   // currently selected bone (null = none)
+let poseActiveAxis   = 'xy';   // rotation plane: 'xy' | 'z'
+let activePointers   = 0;      // live pointer count on canvas
+
+const gesture = {
+  phase:       'idle',   // 'idle' | 'pressing' | 'rotating'
+  timer:       null,
+  pid:         null,     // pointer ID driving the gesture
+  startX:      0,
+  startY:      0,
+  lastX:       0,
+  lastY:       0,
+  boneAtPress: null,     // bone index detected at pointerdown
+};
+
+const LONG_PRESS_MS  = 260;  // ms hold before entering rotation mode
+const CLICK_MAX_MOVE = 10;   // px — max movement to still count as a tap
+const ROT_SENS       = 0.009; // rad per pixel dragged
+
+// ── Raycasting: find dominant bone at screen position ─────────────────────────
+function getBoneAt(clientX, clientY) {
+  if (!mmdMesh) return null;
+  const rect = canvas.getBoundingClientRect();
+  raycaster.setFromCamera({
+    x:  ((clientX - rect.left) / rect.width)  * 2 - 1,
+    y: -((clientY - rect.top)  / rect.height) * 2 + 1,
+  }, camera);
+
+  const hits = raycaster.intersectObject(mmdMesh, false);
+  if (!hits.length) return null;
+
+  // Sum skin weights per bone across the 3 face vertices
+  const face = hits[0].face;
+  const si   = mmdMesh.geometry.attributes.skinIndex;
+  const sw   = mmdMesh.geometry.attributes.skinWeight;
+  const acc  = {};
+  for (const vi of [face.a, face.b, face.c]) {
+    for (let j = 0; j < 4; j++) {
+      const bi = si.getComponent(vi, j);
+      const w  = sw.getComponent(vi, j);
+      if (w > 0.001) acc[bi] = (acc[bi] || 0) + w;
+    }
+  }
+  const top = Object.entries(acc).sort((a, b) => b[1] - a[1])[0];
+  return top ? +top[0] : null;
+}
+
+// ── Bone selection ────────────────────────────────────────────────────────────
+function selectBone(idx) {
+  document.querySelectorAll('.bone-entry.selected').forEach(el => el.classList.remove('selected'));
+  selectedBoneIdx = idx;
+  updatePoseBar();
+  if (idx === null) return;
+
+  const mmdBones = mmdMesh?.userData?.MMD?.bones ?? [];
+  document.getElementById('pose-bone-name').textContent =
+    mmdBones[idx]?.name || `Bone ${idx}`;
+
+  // Highlight & scroll sidebar entry into view
+  const entry = document.querySelector(`.bone-entry[data-bone-idx="${idx}"]`);
+  if (entry) {
+    entry.classList.add('selected');
+    const body = entry.closest('.ac-body');
+    if (body?.classList.contains('hidden')) {
+      body.classList.remove('hidden');
+      body.previousElementSibling?.classList.add('open');
+    }
+    entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function deselectBone() { selectBone(null); }
+
+function updatePoseBar() {
+  document.getElementById('pose-bar').classList.toggle('active', selectedBoneIdx !== null);
+  document.querySelectorAll('.pose-axis-btn').forEach(b =>
+    b.classList.toggle('on', b.dataset.axis === poseActiveAxis)
+  );
+}
+
+// ── Bone rotation by drag delta ───────────────────────────────────────────────
+function rotateBoneDelta(boneIdx, dx, dy) {
+  if (boneIdx === null || !mmdMesh) return;
+  const bone  = mmdMesh.skeleton.bones[boneIdx];
+  if (!bone) return;
+  const clamp = v => Math.max(-Math.PI, Math.min(Math.PI, v));
+
+  if (poseActiveAxis === 'z') {
+    bone.rotation.z = clamp(bone.rotation.z + dx * ROT_SENS);
+  } else {
+    bone.rotation.y = clamp(bone.rotation.y + dx * ROT_SENS);
+    bone.rotation.x = clamp(bone.rotation.x + dy * ROT_SENS);
+  }
+  mmdMesh.skeleton.update();
+  syncSliders(boneIdx);
+}
+
+function syncSliders(boneIdx) {
+  const bone = mmdMesh?.skeleton.bones[boneIdx];
+  if (!bone) return;
+  document.querySelectorAll(`input[type=range][data-bone-idx="${boneIdx}"]`).forEach(s => {
+    const v = bone.rotation[s.dataset.axis];
+    s.value = v;
+    const el = s.closest('.axis-row')?.querySelector('.ax-val');
+    if (el) el.textContent = toDeg(v);
+  });
+}
+
+// ── Long-press ring ────────────────────────────────────────────────────────────
+const lpRing = document.getElementById('long-press-ring');
+function showRing(x, y) {
+  lpRing.style.left    = x + 'px';
+  lpRing.style.top     = y + 'px';
+  lpRing.style.display = 'block';
+  lpRing.classList.remove('pop');
+  lpRing.offsetWidth;          // force reflow to restart animation
+  lpRing.classList.add('pop');
+}
+function hideRing() {
+  lpRing.style.display = 'none';
+  lpRing.classList.remove('pop');
+}
+
+// ── Hover label (mouse only) ──────────────────────────────────────────────────
+const hoverLabel = document.getElementById('bone-hover-label');
+let hoverTimer   = null;
+function updateHoverLabel(clientX, clientY) {
+  clearTimeout(hoverTimer);
+  hoverTimer = setTimeout(() => {
+    if (gesture.phase !== 'idle' || !mmdMesh) { hoverLabel.style.display = 'none'; return; }
+    const bi = getBoneAt(clientX, clientY);
+    if (bi !== null) {
+      const name = mmdMesh.userData?.MMD?.bones?.[bi]?.name || `Bone ${bi}`;
+      hoverLabel.textContent = name;
+      hoverLabel.style.left  = (clientX + 14) + 'px';
+      hoverLabel.style.top   = (clientY - 28) + 'px';
+      hoverLabel.style.display = 'block';
+      canvas.classList.add('bone-hover');
+    } else {
+      hoverLabel.style.display = 'none';
+      canvas.classList.remove('bone-hover');
+    }
+  }, 30);
+}
+
+// ── Cancel gesture helper ─────────────────────────────────────────────────────
+function cancelGesture() {
+  clearTimeout(gesture.timer); gesture.timer = null;
+  hideRing();
+  gesture.phase = 'idle';
+  gesture.pid   = null;
+  canvas.classList.remove('bone-rotate');
+  controls.enabled = true;
+}
+
+// ── Pointer Events ────────────────────────────────────────────────────────────
+canvas.addEventListener('pointerdown', e => {
+  activePointers++;
+
+  // Second finger: abort any bone gesture, hand full control to OrbitControls
+  if (activePointers > 1) { cancelGesture(); controls.enabled = true; return; }
+  if (gesture.phase !== 'idle') return;
+
+  const boneIdx = getBoneAt(e.clientX, e.clientY);
+  hoverLabel.style.display = 'none';
+  clearTimeout(hoverTimer);
+
+  gesture.phase       = 'pressing';
+  gesture.pid         = e.pointerId;
+  gesture.startX      = e.clientX;
+  gesture.startY      = e.clientY;
+  gesture.lastX       = e.clientX;
+  gesture.lastY       = e.clientY;
+  gesture.boneAtPress = boneIdx;
+
+  // Begin long-press countdown only when over the model
+  if (boneIdx !== null) {
+    gesture.timer = setTimeout(() => {
+      if (gesture.phase !== 'pressing') return;
+      gesture.phase = 'rotating';
+      controls.enabled = false;
+      canvas.setPointerCapture(gesture.pid);
+      canvas.classList.add('bone-rotate');
+      selectBone(boneIdx);
+      showRing(gesture.startX, gesture.startY);
+      navigator.vibrate?.(18);   // haptic on mobile if supported
+    }, LONG_PRESS_MS);
+  }
+}, { passive: true });
+
+canvas.addEventListener('pointermove', e => {
+  // Desktop hover (no button held)
+  if (gesture.phase === 'idle' && e.pointerType === 'mouse' && e.buttons === 0) {
+    updateHoverLabel(e.clientX, e.clientY);
+    return;
+  }
+  if (gesture.pid === null || e.pointerId !== gesture.pid) return;
+
+  const dx        = e.clientX - gesture.lastX;
+  const dy        = e.clientY - gesture.lastY;
+  const totalMove = Math.hypot(e.clientX - gesture.startX, e.clientY - gesture.startY);
+
+  if (gesture.phase === 'pressing') {
+    // Moved too much before long press → cancel, let OrbitControls take over
+    if (totalMove > CLICK_MAX_MOVE) cancelGesture();
+  } else if (gesture.phase === 'rotating') {
+    rotateBoneDelta(selectedBoneIdx, dx, dy);
+  }
+
+  gesture.lastX = e.clientX;
+  gesture.lastY = e.clientY;
+}, { passive: true });
+
+canvas.addEventListener('pointerup', e => {
+  activePointers = Math.max(0, activePointers - 1);
+  if (gesture.pid === null || e.pointerId !== gesture.pid) return;
+
+  const wasPressing = gesture.phase === 'pressing';
+  const moved       = Math.hypot(e.clientX - gesture.startX, e.clientY - gesture.startY);
+
+  cancelGesture();
+
+  // Short tap (no drag, within click threshold) → select / deselect
+  if (wasPressing && moved <= CLICK_MAX_MOVE) {
+    const bi = gesture.boneAtPress;
+    if (bi !== null) {
+      if (bi === selectedBoneIdx) deselectBone();   // tap same bone → deselect
+      else selectBone(bi);
+    } else {
+      deselectBone();   // tap empty space → deselect
+    }
+  }
+}, { passive: true });
+
+canvas.addEventListener('pointercancel', e => {
+  activePointers = Math.max(0, activePointers - 1);
+  cancelGesture();
+}, { passive: true });
+
+canvas.addEventListener('pointerleave', () => {
+  clearTimeout(hoverTimer);
+  hoverLabel.style.display = 'none';
+  canvas.classList.remove('bone-hover');
+}, { passive: true });
+
+// ── Pose bar interactions ─────────────────────────────────────────────────────
+document.getElementById('pose-bar').addEventListener('click', e => {
+  const axisBtn = e.target.closest('.pose-axis-btn');
+  if (axisBtn) {
+    poseActiveAxis = axisBtn.dataset.axis;
+    updatePoseBar();
+    return;
+  }
+  if (e.target.closest('#pose-done-btn')) deselectBone();
+});
+
+// ─── Keyboard shortcuts ────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  switch (e.key) {
+    case 'Escape':         deselectBone();  break;
+    case 'r': case 'R':   resetPose();     break;
+    case 'f': case 'F':   resetCamera();   break;
+    case 'b': case 'B':   document.getElementById('sidebar-left').classList.toggle('collapsed');  break;
+    case 'm': case 'M':   document.getElementById('sidebar-right').classList.toggle('collapsed'); break;
+  }
+});
+</script>
+</body>
+</html>
