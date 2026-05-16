@@ -859,7 +859,18 @@ function loadModelFromURL(modelUrl) {
   }
   ikSolver = null; ikAffectedBones.clear();
 
-  new MMDLoader().load(
+  // Build a LoadingManager that resolves texture paths to the model's base directory.
+  // This handles Windows-style absolute paths (C:\...\Amiku1.png) embedded in PMX files.
+  const _urlMgr = new THREE.LoadingManager();
+  const _baseDir = modelUrl.replace(/[^/]+$/, ''); // e.g. "Appearance Miku/"
+  _urlMgr.setURLModifier(url => {
+    const bare = url.replace(/\\/g, '/').split('/').pop();
+    if (!bare) return url;
+    // Keep the PMX itself untouched; reroute everything else to the base directory
+    if (url === modelUrl || /\.pmx$/i.test(bare)) return url;
+    return _baseDir + bare;
+  });
+  new MMDLoader(_urlMgr).load(
     modelUrl,
     mesh => {
       mmdMesh = mesh;
