@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>手・耳ビューア — 漫画家・イラストレーター向け</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  background: #1a1a2e; color: #fffeec;
+  font: 13px/1.4 'DotGothic16', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+  letter-spacing: 0.05em; touch-action: none;
+}
+/* ── Toolbar ───────────────────────────────────────────── */
+#toolbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 48px;
+  background: linear-gradient(180deg,#158a90,#137a7f);
+  border-bottom: 1px solid #86cecb;
+  display: flex; align-items: center; gap: 6px; padding: 0 12px;
+  z-index: 100; flex-shrink: 0;
+}
+.tb-title { font-size: 14px; font-weight: 800; color: #fffeec; letter-spacing: 0.05em; margin-right: 4px; white-space: nowrap; }
+.tb-sep   { width: 1px; height: 28px; background: #86cecb; margin: 0 2px; flex-shrink: 0; }
+.tb-btn {
+  padding: 6px 13px; border: 1px solid #86cecb; border-radius: 6px;
+  background: #c3e5e7; color: #373b3e; font: inherit; font-size: 12px; cursor: pointer;
+  white-space: nowrap; transition: background 0.12s, border-color 0.12s;
+  flex-shrink: 0; letter-spacing: 0.05em;
+}
+.tb-btn:hover { background: #86cecb; }
+.tb-btn.active { background: #e12885; border-color: #c0206a; color: #fffeec; }
+.tb-spacer { flex: 1; }
+
+/* ── Layout ────────────────────────────────────────────── */
+#main {
+  position: fixed; top: 48px; bottom: 0; left: 0; right: 0;
+  display: flex; flex-direction: column;
+}
+#viewport { flex: 1; position: relative; min-height: 0; }
+#webgl-canvas { width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
+
+/* ── Bottom Panel ──────────────────────────────────────── */
+#bottom-panel {
+  background: #0d0d1a; border-top: 2px solid #137a7f;
+  flex-shrink: 0; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+/* Finger tabs */
+#finger-tabs {
+  display: flex; background: #0d0d1a; border-bottom: 1px solid #137a7f;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.finger-tab {
+  flex: 1; min-width: 52px; padding: 8px 4px 7px;
+  text-align: center; font-size: 11px; cursor: pointer; color: #86cecb;
+  border-right: 1px solid #137a7f; user-select: none;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap; letter-spacing: 0;
+}
+.finger-tab:last-child { border-right: none; }
+.finger-tab.active { background: #137a7f; color: #fffeec; }
+.finger-tab .ft-icon { font-size: 18px; display: block; margin-bottom: 2px; line-height: 1; }
+
+/* Joint sliders */
+#joint-sliders {
+  display: flex; gap: 0; padding: 8px 10px 10px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  align-items: stretch;
+}
+.joint-col {
+  flex: 1; min-width: 90px; padding: 0 8px;
+  border-right: 1px solid #1e2e45;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.joint-col:last-child { border-right: none; }
+.joint-label {
+  font-size: 10px; color: #86cecb; text-align: center;
+  margin-bottom: 2px; letter-spacing: 0.05em;
+}
+.axis-row {
+  display: flex; align-items: center; gap: 5px; height: 20px;
+}
+.ax-lbl {
+  width: 12px; font-size: 9px; font-weight: 800; text-align: center;
+  color: #86cecb; flex-shrink: 0;
+}
+input[type=range] {
+  flex: 1; cursor: pointer; accent-color: #e12885;
+  height: 4px; min-width: 60px;
+}
+.ax-val {
+  width: 38px; font-size: 9px; text-align: right; color: #86cecb;
+  font-variant-numeric: tabular-nums; letter-spacing: 0; flex-shrink: 0;
+}
+
+/* Presets */
+#preset-row {
+  display: flex; gap: 6px; padding: 6px 10px 8px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border-top: 1px solid #1e2e45;
+}
+.preset-btn {
+  flex: 0 0 auto; padding: 7px 12px; border-radius: 6px;
+  border: 1px solid #137a7f; background: #0d1a2e;
+  color: #86cecb; font: inherit; font-size: 11px; cursor: pointer;
+  white-space: nowrap; transition: background 0.12s, color 0.12s;
+}
+.preset-btn:hover, .preset-btn:active { background: #137a7f; color: #fffeec; }
+
+/* ── Overlay ────────────────────────────────────────────── */
+#overlay {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(26,26,46,0.97);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 16px;
+}
+.ov-logo  { font-size: 24px; font-weight: 800; color: #137a7f; letter-spacing: 2px; }
+.ov-sub   { font-size: 12px; color: #86cecb; text-align: center; }
+#ov-autoload-btn {
+  padding: 10px 26px; border-radius: 8px; border: 1px solid #e12885;
+  background: #e12885; color: #fffeec; font: inherit; font-size: 13px;
+  cursor: pointer; display: none; transition: background 0.12s;
+}
+#ov-autoload-btn:hover { background: #c0206a; }
+#ov-autoload-hint { font-size: 10px; color: #86cecb; display: none; text-align: center; }
+#ov-dropzone {
+  width: min(320px, 90vw); padding: 24px;
+  border: 2px dashed #137a7f; border-radius: 12px;
+  text-align: center; color: #86cecb; font-size: 13px;
+  transition: border-color 0.15s, background 0.15s;
+}
+#ov-dropzone.drag-active { border-color: #86cecb; background: rgba(134,206,203,0.08); }
+.ov-drop-icon { font-size: 32px; margin-bottom: 6px; }
+#ov-browse-btn {
+  padding: 10px 24px; border-radius: 8px; background: #137a7f;
+  border: 1px solid #86cecb; color: #fffeec; font: inherit; font-size: 13px;
+  cursor: pointer; transition: background 0.12s;
+}
+#ov-browse-btn:hover { background: #0f6570; }
+#ov-spinner {
+  width: 36px; height: 36px; border: 3px solid #1e2e45; border-top-color: #137a7f;
+  border-radius: 50%; animation: spin 0.75s linear infinite; display: none;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#ov-msg { font-size: 12px; color: #fffeec; min-height: 18px; text-align: center; max-width: 300px; }
+
+/* Mode button active state */
+#mode-ear { display: none; }
+
+/* Ear anatomy labels */
+#ear-labels {
+  position: absolute; inset: 0; pointer-events: none; display: none;
+}
+.ear-label {
+  position: absolute; background: rgba(19,122,127,0.88);
+  color: #fffeec; padding: 2px 7px; border-radius: 4px; font-size: 10px;
+  border: 1px solid #86cecb; transform: translate(-50%, -50%);
+  pointer-events: none; white-space: nowrap;
+}
+
+/* Help tooltip */
+#help-toast {
+  position: fixed; bottom: calc(var(--panel-h, 200px) + 10px); left: 50%;
+  transform: translateX(-50%);
+  background: rgba(19,122,127,0.95); color: #fffeec;
+  padding: 8px 16px; border-radius: 8px; font-size: 11px;
+  pointer-events: none; z-index: 200; opacity: 0;
+  transition: opacity 0.3s; white-space: nowrap; text-align: center;
+}
+#help-toast.show { opacity: 1; }
+
+/* Bone highlight glow in 3D view */
+#bone-hover-label {
+  position: fixed; pointer-events: none; z-index: 250; display: none;
+  background: rgba(19,122,127,0.92); color: #fffeec;
+  padding: 3px 9px; border-radius: 5px; font-size: 11px; white-space: nowrap;
+  border: 1px solid #e12885;
+}
+
+/* Long-press ring */
+#long-press-ring {
+  position: fixed; pointer-events: none; z-index: 240; display: none;
+  width: 60px; height: 60px; border-radius: 50%;
+  border: 2.5px solid #e12885; transform: translate(-50%,-50%) scale(0.3);
+  opacity: 0;
+}
+#long-press-ring.pop { animation: lp-pop 0.25s ease-out forwards; }
+@keyframes lp-pop {
+  0%   { transform: translate(-50%,-50%) scale(0.3); opacity: 0.9; }
+  60%  { transform: translate(-50%,-50%) scale(1.2); opacity: 0.6; }
+  100% { transform: translate(-50%,-50%) scale(1.0); opacity: 0; }
+}
+
+/* Large touch targets for mobile */
+@media (max-width: 600px) {
+  .finger-tab { min-width: 58px; padding: 10px 4px 8px; }
+  .finger-tab .ft-icon { font-size: 22px; }
+  input[type=range] { height: 6px; }
+  .joint-col { min-width: 80px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <span class="tb-title">✋ 手・耳ビューア</span>
+  <div class="tb-sep"></div>
+  <button class="tb-btn active" id="mode-hand-btn" data-mode="hand">✋ 手</button>
+  <button class="tb-btn"        id="mode-ear-btn"  data-mode="ear" >👂 耳</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" id="hand-lr-btn" title="左右切替">右手 ⇄ 左手</button>
+  <div class="tb-sep"></div>
+  <button class="tb-btn" data-action="reset">リセット</button>
+  <button class="tb-btn" data-action="screenshot">📷</button>
+  <button class="tb-btn" data-action="open">📂 開く</button>
+  <div class="tb-spacer"></div>
+  <a href="miku-viewer.html" class="tb-btn" style="text-decoration:none;font-size:11px;" title="メインビューアに戻る">← MMP</a>
+  <span style="font-size:10px;color:#bec8d1;white-space:nowrap;">長押し+ドラッグ で回転</span>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="viewport">
+    <canvas id="webgl-canvas" tabindex="0"></canvas>
+    <div id="ear-labels"></div>
+    <div id="bone-hover-label"></div>
+    <div id="long-press-ring"></div>
+  </div>
+
+  <!-- BOTTOM PANEL -->
+  <div id="bottom-panel">
+    <!-- Finger selector tabs -->
+    <div id="finger-tabs">
+      <div class="finger-tab active" data-finger="0"><span class="ft-icon">👍</span>親指</div>
+      <div class="finger-tab"       data-finger="1"><span class="ft-icon">☝️</span>人差し指</div>
+      <div class="finger-tab"       data-finger="2"><span class="ft-icon">🖕</span>中指</div>
+      <div class="finger-tab"       data-finger="3"><span class="ft-icon">💍</span>薬指</div>
+      <div class="finger-tab"       data-finger="4"><span class="ft-icon">🤙</span>小指</div>
+      <div class="finger-tab"       data-finger="5"><span class="ft-icon">🤲</span>手首</div>
+    </div>
+
+    <!-- Per-joint sliders (filled by JS) -->
+    <div id="joint-sliders"></div>
+
+    <!-- Preset poses -->
+    <div id="preset-row">
+      <button class="preset-btn" data-preset="open">🖐 開く</button>
+      <button class="preset-btn" data-preset="fist">✊ 握る</button>
+      <button class="preset-btn" data-preset="point">☝ 指差し</button>
+      <button class="preset-btn" data-preset="peace">✌ ピース</button>
+      <button class="preset-btn" data-preset="ok">👌 OK</button>
+      <button class="preset-btn" data-preset="pinch">🤏 ピンチ</button>
+      <button class="preset-btn" data-preset="hold">🤙 小指立て</button>
+      <button class="preset-btn" data-preset="claw">🐾 鷲掴み</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY -->
+<div id="overlay">
+  <div class="ov-logo">✋ 手・耳ビューア</div>
+  <div class="ov-sub">漫画家・イラストレーター向け<br>PMXモデルフォルダを開いてください</div>
+  <button id="ov-autoload-btn">↩ 前回のフォルダを再読み込み</button>
+  <div id="ov-autoload-hint"></div>
+  <div id="ov-dropzone">
+    <div class="ov-drop-icon">📁</div>
+    <div>「Appearance Miku」フォルダをここにドロップ</div>
+    <div style="font-size:11px;margin-top:4px;color:#137a7f">または下のボタンから選択</div>
+  </div>
+  <button id="ov-browse-btn">📂 フォルダを選択して開く</button>
+  <div id="ov-spinner"></div>
+  <div id="ov-msg"></div>
+</div>
+
+<!-- hidden inputs -->
+<input type="file" id="folder-input" webkitdirectory multiple style="display:none">
+
+<!-- HELP TOAST -->
+<div id="help-toast"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { MMDLoader }     from 'three/addons/loaders/MMDLoader.js';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+// Appearance Miku finger bone indices
+// Format: [boneIdx, fingerGroup, joint (0=MCP/CMC, 1=PIP/MP, 2=DIP/IP)]
+// Right hand: bones 28-42, Left hand: bones 51-65
+const FINGER_BONES = {
+  right: [
+    // Thumb: CMC, MP, IP
+    { idx: 28, finger: 0, joint: 0, axes: ['y','z'] },
+    { idx: 29, finger: 0, joint: 1, axes: ['y','z'] },
+    { idx: 30, finger: 0, joint: 2, axes: ['y']     },
+    // Index: MCP, PIP, DIP
+    { idx: 31, finger: 1, joint: 0, axes: ['x','y','z'] },
+    { idx: 32, finger: 1, joint: 1, axes: ['x']         },
+    { idx: 33, finger: 1, joint: 2, axes: ['x']         },
+    // Middle
+    { idx: 34, finger: 2, joint: 0, axes: ['x','y','z'] },
+    { idx: 35, finger: 2, joint: 1, axes: ['x']         },
+    { idx: 36, finger: 2, joint: 2, axes: ['x']         },
+    // Ring
+    { idx: 37, finger: 3, joint: 0, axes: ['x','y','z'] },
+    { idx: 38, finger: 3, joint: 1, axes: ['x']         },
+    { idx: 39, finger: 3, joint: 2, axes: ['x']         },
+    // Pinky
+    { idx: 40, finger: 4, joint: 0, axes: ['x','y','z'] },
+    { idx: 41, finger: 4, joint: 1, axes: ['x']         },
+    { idx: 42, finger: 4, joint: 2, axes: ['x']         },
+  ],
+  left: [
+    { idx: 51, finger: 0, joint: 0, axes: ['y','z'] },
+    { idx: 52, finger: 0, joint: 1, axes: ['y','z'] },
+    { idx: 53, finger: 0, joint: 2, axes: ['y']     },
+    { idx: 54, finger: 1, joint: 0, axes: ['x','y','z'] },
+    { idx: 55, finger: 1, joint: 1, axes: ['x']         },
+    { idx: 56, finger: 1, joint: 2, axes: ['x']         },
+    { idx: 57, finger: 2, joint: 0, axes: ['x','y','z'] },
+    { idx: 58, finger: 2, joint: 1, axes: ['x']         },
+    { idx: 59, finger: 2, joint: 2, axes: ['x']         },
+    { idx: 60, finger: 3, joint: 0, axes: ['x','y','z'] },
+    { idx: 61, finger: 3, joint: 1, axes: ['x']         },
+    { idx: 62, finger: 3, joint: 2, axes: ['x']         },
+    { idx: 63, finger: 4, joint: 0, axes: ['x','y','z'] },
+    { idx: 64, finger: 4, joint: 1, axes: ['x']         },
+    { idx: 65, finger: 4, joint: 2, axes: ['x']         },
+  ],
+};
+
+// Wrist + arm bones for "wrist" tab (group 5)
+const WRIST_BONES = {
+  right: [
+    { idx: 24, name: '右手首', axes: ['x','y','z'] },
+    { idx: 23, name: '右ひじ', axes: ['x','y','z'] },
+  ],
+  left: [
+    { idx: 47, name: '左手首', axes: ['x','y','z'] },
+    { idx: 46, name: '左ひじ', axes: ['x','y','z'] },
+  ],
+};
+
+const JOINT_NAMES = ['第1関節\n(付け根)', '第2関節', '第3関節\n(先端)'];
+const FINGER_NAMES = ['親指', '人差し指', '中指', '薬指', '小指', '手首/ひじ'];
+
+// Presets: [finger][joint][axis_index] = radians
+// Positive X = bend toward palm, Y = spread
+const PRESETS = {
+  open:  null, // reset = all 0
+  fist:  { bends: [0, 1.5, 1.5, 1.5, 1.5], spread: 0 },
+  point: { bends: [0, 0,   1.5, 1.5, 1.5], spread: 0 },
+  peace: { bends: [0, 0,   0,   1.5, 1.5], spread: 0 },
+  ok:    { bends: [1.2, 0, 1.5, 1.5, 1.5], spread: 0 },
+  pinch: { bends: [0.8, 0.6, 1.5, 1.5, 1.5], spread: 0 },
+  hold:  { bends: [0, 1.5, 1.5, 1.5, 0],   spread: 0 },
+  claw:  { bends: [0, 0.9, 0.9, 0.9, 0.9], spread: 0 },
+};
+
+// Materials to show in Hand mode (hide everything else)
+const HAND_MATERIAL_KEYWORDS_RIGHT = ['手', 'hand', 'skin', '肌'];
+const EAR_MATERIAL_KEYWORDS = ['頭', '顔', '肌', 'head', 'face', 'skin'];
+
+const toDeg = r => (r * 180 / Math.PI).toFixed(1) + '°';
+
+// ── App State ─────────────────────────────────────────────────────────────────
+let mmdMesh   = null;
+const fileMap = new Map();
+let currentMode  = 'hand';   // 'hand' | 'ear'
+let currentSide  = 'right';  // 'right' | 'left'
+let activeFingerGroup = 0;
+
+// ── THREE.js setup ────────────────────────────────────────────────────────────
+const canvas   = document.getElementById('webgl-canvas');
+const viewport = document.getElementById('viewport');
+
+const renderer = new THREE.WebGLRenderer({
+  canvas, antialias: true, preserveDrawingBuffer: true,
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled   = true;
+renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace    = THREE.SRGBColorSpace;
+renderer.toneMapping         = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1a2e);
+scene.fog = new THREE.FogExp2(0x0d1a2e, 0.018);
+
+const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 200);
+camera.position.set(0, 12, 8);
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const keyL = new THREE.DirectionalLight(0xfff0e8, 1.4);
+keyL.position.set(4, 10, 6);
+keyL.castShadow = true;
+keyL.shadow.mapSize.set(2048, 2048);
+Object.assign(keyL.shadow.camera, { near: 0.1, far: 60, left: -8, right: 8, top: 8, bottom: -8 });
+keyL.shadow.intensity = 0.4;
+scene.add(keyL);
+scene.add(Object.assign(new THREE.DirectionalLight(0x8899cc, 0.4), { position: new THREE.Vector3(-4, 4, -8) }));
+scene.add(Object.assign(new THREE.DirectionalLight(0xffddcc, 0.3), { position: new THREE.Vector3(0, 2, -10) }));
+
+// Ground (subtle)
+const gnd = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.MeshStandardMaterial({ color: 0x0a1020, roughness: 1 })
+);
+gnd.rotation.x = -Math.PI / 2;
+gnd.receiveShadow = true;
+scene.add(gnd);
+scene.add(new THREE.GridHelper(20, 20, 0x1a2a3a, 0x0d1a2e));
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 10, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance   = 0.5;
+controls.maxDistance   = 60;
+controls.update();
+
+// Resize
+function onResize() {
+  const w = viewport.clientWidth, h = viewport.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+// Render loop
+(function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+})();
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// AUTO-LOAD — IndexedDB + File System Access API
+// ════════════════════════════════════════════════════════════════════════════════
+const _IDB = (() => {
+  const DB = 'MMP_HandViewer', VER = 1, STORE = 'handles';
+  const open = () => new Promise((res, rej) => {
+    const r = indexedDB.open(DB, VER);
+    r.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = e => rej(e.target.error);
+  });
+  return {
+    save: async (key, val) => {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(val, key);
+        tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+      });
+    },
+    get: async (key) => {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx  = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(key);
+        req.onsuccess = e => res(e.target.result ?? null);
+        req.onerror   = e => rej(e.target.error);
+      });
+    },
+  };
+})();
+
+async function collectFilesFromDirHandle(dirHandle, out = []) {
+  for await (const [, entry] of dirHandle) {
+    if (entry.kind === 'file') out.push(await entry.getFile());
+    else if (entry.kind === 'directory') await collectFilesFromDirHandle(entry, out);
+  }
+  return out;
+}
+
+async function tryAutoLoad() {
+  if (!window.FileSystemDirectoryHandle) return;
+  let handle;
+  try { handle = await _IDB.get('model-dir'); } catch { return; }
+  if (!handle) return;
+  let perm;
+  try { perm = await handle.queryPermission({ mode: 'read' }); } catch { return; }
+  if (perm === 'granted') { autoLoadDirHandle(handle); return; }
+  const btn  = document.getElementById('ov-autoload-btn');
+  const hint = document.getElementById('ov-autoload-hint');
+  btn.textContent = `↩ 「${handle.name}」を再読み込み`;
+  btn.style.display = '';
+  hint.textContent  = '前回使用したフォルダを一発読み込み';
+  hint.style.display = '';
+  btn.onclick = async () => {
+    btn.disabled = true;
+    const newPerm = await handle.requestPermission({ mode: 'read' }).catch(() => 'denied');
+    if (newPerm === 'granted') { await autoLoadDirHandle(handle); }
+    else { hint.textContent = '許可が必要です。手動でフォルダを選択してください。'; }
+    btn.disabled = false;
+  };
+}
+
+async function autoLoadDirHandle(dirHandle) {
+  showOverlayLoading(`「${dirHandle.name}」を読み込み中...`);
+  const files = await collectFilesFromDirHandle(dirHandle);
+  await ingestFiles(files);
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// FILE LOADING
+// ════════════════════════════════════════════════════════════════════════════════
+async function imgBlobToPngUrl(blob) {
+  return new Promise(resolve => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      c.toBlob(png => resolve(URL.createObjectURL(png)), 'image/png');
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(URL.createObjectURL(blob)); };
+    img.src = url;
+  });
+}
+
+async function ingestFiles(fileList) {
+  showOverlayLoading('ファイルを準備中...');
+  for (const url of fileMap.values()) URL.revokeObjectURL(url);
+  fileMap.clear();
+
+  const files  = Array.from(fileList);
+  const pmxFile = files.find(f => f.name.toLowerCase().endsWith('.pmx'));
+  if (!pmxFile) {
+    showOverlayError('.pmx ファイルが見つかりませんでした。\nモデルフォルダ全体を選択してください。');
+    return;
+  }
+  await Promise.all(files.map(async file => {
+    const key = file.name.toLowerCase();
+    const ext = key.split('.').pop();
+    if (ext === 'bmp' || ext === 'spa' || ext === 'sph') {
+      fileMap.set(key, await imgBlobToPngUrl(file));
+    } else {
+      fileMap.set(key, URL.createObjectURL(file));
+    }
+  }));
+  loadModel(fileMap.get(pmxFile.name.toLowerCase()));
+}
+
+const PMX_VIRTUAL = 'model.pmx';
+
+function loadModel(pmxBlobUrl) {
+  showOverlayLoading('モデルを読み込み中...');
+  const manager = new THREE.LoadingManager();
+  manager.setURLModifier(url => {
+    if (url === PMX_VIRTUAL) return pmxBlobUrl;
+    const bare = url.replace(/\\/g, '/').split('/').pop().toLowerCase();
+    if (fileMap.has(bare)) return fileMap.get(bare);
+    return url;
+  });
+
+  if (mmdMesh) {
+    scene.remove(mmdMesh);
+    mmdMesh.geometry?.dispose();
+    const ms = Array.isArray(mmdMesh.material) ? mmdMesh.material : [mmdMesh.material];
+    ms.forEach(m => { m.map?.dispose(); m.dispose(); });
+    mmdMesh = null;
+  }
+
+  new MMDLoader(manager).load(PMX_VIRTUAL, mesh => {
+    mmdMesh = mesh;
+    mesh.castShadow = mesh.receiveShadow = true;
+    scene.add(mesh);
+    applyMode(currentMode);
+    buildSliders();
+    hideOverlay();
+  },
+  xhr => {
+    if (xhr.total > 0) showOverlayLoading(`読み込み中… ${Math.round(xhr.loaded/xhr.total*100)}%`);
+  },
+  err => {
+    console.error('[MMDLoader]', err);
+    showOverlayError('ロードに失敗しました:\n' + (err?.message ?? String(err)));
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// MODE MANAGEMENT
+// ════════════════════════════════════════════════════════════════════════════════
+
+// Camera presets for each mode
+const CAM_PRESETS = {
+  hand_right: { target: [0, 8.5, 0], pos: [0, 9, 6],  fov: 35 },
+  hand_left:  { target: [0, 8.5, 0], pos: [0, 9, 6],  fov: 35 },
+  ear_right:  { target: [1.5, 17, 0], pos: [6, 17, 2], fov: 30 },
+  ear_left:   { target: [-1.5, 17, 0], pos: [-6, 17, 2], fov: 30 },
+};
+
+function applyMode(mode) {
+  currentMode = mode;
+  if (!mmdMesh) return;
+
+  const mats    = Array.isArray(mmdMesh.material) ? mmdMesh.material : [mmdMesh.material];
+  const mmdMats = mmdMesh.userData?.MMD?.materials ?? [];
+
+  if (mode === 'hand') {
+    // Show all materials (let the user see the full Miku in hand close-up)
+    // — or optionally show only hand/skin materials
+    mats.forEach(m => { m.visible = true; });
+
+    // Camera close-up on hands
+    const cp = CAM_PRESETS[`hand_${currentSide}`];
+    camera.fov = cp.fov;
+    camera.updateProjectionMatrix();
+    animateCameraTo(cp.pos, cp.target, 0.8);
+
+    document.getElementById('bottom-panel').style.display = 'flex';
+    document.getElementById('ear-labels').style.display   = 'none';
+
+  } else if (mode === 'ear') {
+    // Show head/face materials
+    mats.forEach((m, i) => {
+      const name = (mmdMats[i]?.name ?? '').toLowerCase();
+      m.visible = EAR_MATERIAL_KEYWORDS.some(k => name.includes(k)) ||
+                  name === '' || i < 5; // show first few if unknown
+    });
+
+    // Camera to ear
+    const cp = CAM_PRESETS[`ear_${currentSide}`];
+    camera.fov = cp.fov;
+    camera.updateProjectionMatrix();
+    animateCameraTo(cp.pos, cp.target, 0.8);
+
+    document.getElementById('bottom-panel').style.display = 'none';
+    document.getElementById('ear-labels').style.display   = 'block';
+    buildEarLabels();
+  }
+
+  // Update toolbar buttons
+  document.getElementById('mode-hand-btn').classList.toggle('active', mode === 'hand');
+  document.getElementById('mode-ear-btn').classList.toggle('active', mode === 'ear');
+}
+
+function animateCameraTo(pos, target, dur = 0.8) {
+  const sp = camera.position.clone();
+  const st = controls.target.clone();
+  const ep = new THREE.Vector3(...pos);
+  const et = new THREE.Vector3(...target);
+  const t0 = performance.now();
+  (function step() {
+    const t = Math.min((performance.now() - t0) / 1000 / dur, 1);
+    const e = t < 0.5 ? 2*t*t : -1 + (4-2*t)*t;
+    camera.position.lerpVectors(sp, ep, e);
+    controls.target.lerpVectors(st, et, e);
+    controls.update();
+    if (t < 1) requestAnimationFrame(step);
+  })();
+}
+
+function buildEarLabels() {
+  const container = document.getElementById('ear-labels');
+  container.innerHTML = '';
+  if (!mmdMesh) return;
+
+  // Approximate ear anatomy label positions (as % of viewport, rough offsets)
+  const labels = [
+    { text: '耳輪 (Helix)',         x: 55, y: 32 },
+    { text: '対輪 (Antihelix)',     x: 48, y: 45 },
+    { text: '耳珠 (Tragus)',        x: 44, y: 58 },
+    { text: '対耳珠 (Antitragus)', x: 50, y: 64 },
+    { text: '耳垂 (Earlobe)',       x: 52, y: 74 },
+    { text: '耳甲介 (Concha)',      x: 46, y: 52 },
+  ];
+  labels.forEach(l => {
+    const el = document.createElement('div');
+    el.className = 'ear-label';
+    el.textContent = l.text;
+    el.style.left = l.x + '%';
+    el.style.top  = l.y + '%';
+    container.appendChild(el);
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// FINGER SLIDERS
+// ════════════════════════════════════════════════════════════════════════════════
+
+// Stores all slider elements keyed by boneIdx+axis
+const sliderMap = new Map(); // `${boneIdx}-${axis}` → { slider, valEl }
+
+function buildSliders() {
+  sliderMap.clear();
+  renderFingerSliders(activeFingerGroup);
+}
+
+function renderFingerSliders(fingerGroup) {
+  activeFingerGroup = fingerGroup;
+  const container   = document.getElementById('joint-sliders');
+  container.innerHTML = '';
+
+  if (!mmdMesh) return;
+
+  const bones    = mmdMesh.skeleton.bones;
+  const mmdBones = mmdMesh.userData?.MMD?.bones ?? [];
+
+  if (fingerGroup === 5) {
+    // Wrist / elbow tab
+    const wbones = WRIST_BONES[currentSide];
+    wbones.forEach(info => {
+      const col  = document.createElement('div');
+      col.className = 'joint-col';
+      const lbl = document.createElement('div');
+      lbl.className = 'joint-label';
+      lbl.textContent = info.name;
+      col.appendChild(lbl);
+
+      const bone = bones[info.idx];
+      if (!bone) { container.appendChild(col); return; }
+
+      info.axes.forEach(axis => {
+        col.appendChild(makeSliderRow(info.idx, bone, axis));
+      });
+      container.appendChild(col);
+    });
+    return;
+  }
+
+  // Finger joints 0-2
+  const fingerBones = FINGER_BONES[currentSide].filter(b => b.finger === fingerGroup);
+  // Group by joint
+  const byJoint = [0, 1, 2].map(j => fingerBones.filter(b => b.joint === j));
+
+  byJoint.forEach((joints, ji) => {
+    if (!joints.length) return;
+    const col = document.createElement('div');
+    col.className = 'joint-col';
+    const lbl = document.createElement('div');
+    lbl.className = 'joint-label';
+    lbl.textContent = JOINT_NAMES[ji];
+    col.appendChild(lbl);
+
+    joints.forEach(info => {
+      const bone = bones[info.idx];
+      if (!bone) return;
+      info.axes.forEach(axis => {
+        col.appendChild(makeSliderRow(info.idx, bone, axis));
+      });
+    });
+    container.appendChild(col);
+  });
+}
+
+function makeSliderRow(boneIdx, bone, axis) {
+  const row  = document.createElement('div');
+  row.className = 'axis-row';
+
+  const lbl  = document.createElement('span');
+  lbl.className = 'ax-lbl';
+  lbl.textContent = axis.toUpperCase();
+
+  const slider = document.createElement('input');
+  slider.type  = 'range';
+  slider.min   = -Math.PI;
+  slider.max   =  Math.PI;
+  slider.step  = 0.005;
+  slider.value = bone.rotation[axis];
+
+  const valEl = document.createElement('span');
+  valEl.className = 'ax-val';
+  valEl.textContent = toDeg(bone.rotation[axis]);
+
+  slider.addEventListener('input', () => {
+    bone.rotation[axis] = parseFloat(slider.value);
+    valEl.textContent   = toDeg(bone.rotation[axis]);
+    mmdMesh?.skeleton.update();
+  });
+
+  const key = `${boneIdx}-${axis}`;
+  sliderMap.set(key, { slider, valEl });
+
+  row.append(lbl, slider, valEl);
+  return row;
+}
+
+function syncSlidersForCurrentFinger() {
+  if (!mmdMesh) return;
+  sliderMap.forEach(({ slider, valEl }, key) => {
+    const [boneIdxStr, axis] = key.split('-');
+    const bone = mmdMesh.skeleton.bones[+boneIdxStr];
+    if (!bone) return;
+    const v = bone.rotation[axis];
+    slider.value = v;
+    valEl.textContent = toDeg(v);
+  });
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// PRESET POSES
+// ════════════════════════════════════════════════════════════════════════════════
+
+function applyPreset(name) {
+  if (!mmdMesh) return;
+  const bones = mmdMesh.skeleton.bones;
+  const p     = PRESETS[name];
+
+  // Get the right/left bone list
+  const fingerBoneList = FINGER_BONES[currentSide];
+
+  if (!p) {
+    // Reset all finger bones
+    fingerBoneList.forEach(({ idx }) => {
+      const b = bones[idx];
+      if (b) b.rotation.set(0, 0, 0);
+    });
+  } else {
+    fingerBoneList.forEach(({ idx, finger, joint, axes }) => {
+      const b = bones[idx];
+      if (!b) return;
+      b.rotation.set(0, 0, 0);
+
+      // Get bend for this finger at this joint
+      const bendBase = p.bends?.[finger] ?? 0;
+      // Taper: joints deeper in bend more
+      const bend = bendBase * (joint === 0 ? 0.5 : joint === 1 ? 0.8 : 1.0);
+
+      // Primary bend axis (X for most fingers, Y for thumb)
+      const isThumb = (finger === 0);
+      if (isThumb) {
+        if (axes.includes('y')) b.rotation.y = -bend * (currentSide === 'right' ? 1 : -1);
+      } else {
+        if (axes.includes('x')) b.rotation.x = -bend; // negative = curl toward palm
+      }
+    });
+  }
+
+  mmdMesh.skeleton.update();
+  syncSlidersForCurrentFinger();
+  showToast(name === 'open' ? '開いた手' : PRESET_NAMES[name] ?? name);
+}
+
+const PRESET_NAMES = {
+  fist: '握り拳', point: '指差し', peace: 'ピース',
+  ok: 'OK', pinch: 'ピンチ', hold: '小指立て', claw: '鷲掴み',
+};
+
+function showToast(msg) {
+  const t = document.getElementById('help-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => t.classList.remove('show'), 1500);
+}
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// INTERACTIVE POSING (long-press + drag on 3D model)
+// ════════════════════════════════════════════════════════════════════════════════
+
+const raycaster = new THREE.Raycaster();
+const hoverLabel = document.getElementById('bone-hover-label');
+const lpRing     = document.getElementById('long-press-ring');
+
+// Which bone indices count as "hand" bones we want to interact with
+function getInteractiveBones() {
+  const list = FINGER_BONES[currentSide].map(b => b.idx);
+  const wb   = WRIST_BONES[currentSide].map(b => b.idx);
+  return new Set([...list, ...wb]);
+}
+
+function getBoneAt(cx, cy) {
+  if (!mmdMesh) return null;
+  const rect = canvas.getBoundingClientRect();
+  raycaster.setFromCamera({
+    x:  ((cx - rect.left) / rect.width)  * 2 - 1,
+    y: -((cy - rect.top)  / rect.height) * 2 + 1,
+  }, camera);
+  const hits = raycaster.intersectObject(mmdMesh, false);
+  if (!hits.length) return null;
+
+  // Find bone with highest skin weight across all 3 face vertices
+  const geo     = mmdMesh.geometry;
+  const face    = hits[0].face;
+  const skinIdx = geo.attributes.skinIndex;
+  const skinWt  = geo.attributes.skinWeight;
+  if (!skinIdx || !skinWt) return null;
+  const acc  = {};
+  for (const fvi of [face.a, face.b, face.c]) {
+    for (let k = 0; k < 4; k++) {
+      const bi = skinIdx.getComponent(fvi, k);
+      const w  = skinWt.getComponent(fvi, k);
+      if (w > 0.001) acc[bi] = (acc[bi] || 0) + w;
+    }
+  }
+  const top = Object.entries(acc).sort((a, b) => b[1] - a[1])[0];
+  let bestBone = top ? +top[0] : null;
+
+  // Only interact with hand bones
+  const interactive = getInteractiveBones();
+  return interactive.has(bestBone) ? bestBone : null;
+}
+
+let selectedBoneIdx = null;
+
+const gesture = {
+  phase: 'idle', timer: null, pid: null,
+  startX: 0, startY: 0, lastX: 0, lastY: 0, boneAtPress: null,
+};
+
+const LONG_PRESS_MS  = 240;
+const CLICK_MAX_MOVE = 12;
+const ROT_SENS       = 0.010;
+
+function startLpRing(cx, cy) {
+  lpRing.style.left = cx + 'px';
+  lpRing.style.top  = cy + 'px';
+  lpRing.style.display = 'block';
+  lpRing.classList.remove('pop');
+  requestAnimationFrame(() => lpRing.classList.add('pop'));
+  setTimeout(() => { lpRing.style.display = 'none'; }, 350);
+}
+
+function rotateBone(idx, dx, dy) {
+  if (!mmdMesh) return;
+  const bone = mmdMesh.skeleton.bones[idx];
+  if (!bone) return;
+  bone.rotation.y += dx * ROT_SENS;
+  bone.rotation.x += dy * ROT_SENS;
+  mmdMesh.skeleton.update();
+
+  // Sync sliders in real-time
+  for (const axis of ['x', 'y', 'z']) {
+    const key = `${idx}-${axis}`;
+    const entry = sliderMap.get(key);
+    if (entry) {
+      entry.slider.value    = bone.rotation[axis];
+      entry.valEl.textContent = toDeg(bone.rotation[axis]);
+    }
+  }
+}
+
+function selectBone(idx) {
+  if (!mmdMesh) return;
+  selectedBoneIdx = idx;
+  // Switch to the finger group that contains this bone
+  const fingerBones = FINGER_BONES[currentSide];
+  const found = fingerBones.find(b => b.idx === idx);
+  if (found !== undefined) {
+    const newFinger = found.finger;
+    if (newFinger !== activeFingerGroup) {
+      setFingerTab(newFinger);
+    }
+  }
+  // Show bone name
+  const mmdBones = mmdMesh.userData?.MMD?.bones ?? [];
+  const name = mmdBones[idx]?.name ?? `Bone ${idx}`;
+  hoverLabel.textContent = name;
+  hoverLabel.style.display = 'block';
+  setTimeout(() => { hoverLabel.style.display = 'none'; }, 1500);
+}
+
+canvas.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'touch' && e.button !== 0) return;
+
+  const bi = getBoneAt(e.clientX, e.clientY);
+  gesture.pid = e.pointerId;
+  gesture.phase = 'pressing';
+  gesture.startX = gesture.lastX = e.clientX;
+  gesture.startY = gesture.lastY = e.clientY;
+  gesture.boneAtPress = bi;
+
+  gesture.timer = setTimeout(() => {
+    if (gesture.phase !== 'pressing') return;
+    if (gesture.boneAtPress === null) return;
+    gesture.phase = 'rotating';
+    startLpRing(gesture.startX, gesture.startY);
+    canvas.classList.add('bone-rotate');
+    selectBone(gesture.boneAtPress);
+  }, LONG_PRESS_MS);
+}, { passive: true });
+
+canvas.addEventListener('pointermove', e => {
+  if (gesture.pid === null || e.pointerId !== gesture.pid) return;
+  const dx = e.clientX - gesture.lastX;
+  const dy = e.clientY - gesture.lastY;
+  const totalMove = Math.hypot(e.clientX - gesture.startX, e.clientY - gesture.startY);
+
+  if (gesture.phase === 'pressing') {
+    if (totalMove > CLICK_MAX_MOVE) {
+      clearTimeout(gesture.timer);
+      gesture.phase = 'idle';
+    }
+  } else if (gesture.phase === 'rotating') {
+    rotateBone(gesture.boneAtPress, dx, dy);
+  }
+
+  gesture.lastX = e.clientX;
+  gesture.lastY = e.clientY;
+}, { passive: true });
+
+canvas.addEventListener('pointerup', e => {
+  if (gesture.pid === null || e.pointerId !== gesture.pid) return;
+  clearTimeout(gesture.timer);
+  const wasPressing = gesture.phase === 'pressing';
+  const moved = Math.hypot(e.clientX - gesture.startX, e.clientY - gesture.startY);
+  canvas.classList.remove('bone-rotate');
+  gesture.phase = 'idle';
+  gesture.pid   = null;
+
+  if (wasPressing && moved <= CLICK_MAX_MOVE && gesture.boneAtPress !== null) {
+    selectBone(gesture.boneAtPress);
+  }
+}, { passive: true });
+
+canvas.addEventListener('pointercancel', () => {
+  clearTimeout(gesture.timer);
+  gesture.phase = 'idle'; gesture.pid = null;
+  canvas.classList.remove('bone-rotate');
+}, { passive: true });
+
+
+// ════════════════════════════════════════════════════════════════════════════════
+// EVENT LISTENERS
+// ════════════════════════════════════════════════════════════════════════════════
+
+// Finger tabs
+document.getElementById('finger-tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.finger-tab');
+  if (!tab) return;
+  setFingerTab(+tab.dataset.finger);
+});
+
+function setFingerTab(idx) {
+  activeFingerGroup = idx;
+  document.querySelectorAll('.finger-tab').forEach((t, i) => {
+    t.classList.toggle('active', i === idx);
+  });
+  renderFingerSliders(idx);
+}
+
+// Mode buttons
+document.getElementById('toolbar').addEventListener('click', e => {
+  const btn = e.target.closest('[data-mode]');
+  if (btn) { applyMode(btn.dataset.mode); return; }
+
+  const actionBtn = e.target.closest('[data-action]');
+  if (!actionBtn) return;
+  switch (actionBtn.dataset.action) {
+    case 'open':       openFolderPicker(); break;
+    case 'reset':      resetPose();        break;
+    case 'screenshot': doScreenshot();     break;
+  }
+});
+
+// Hand L/R toggle
+document.getElementById('hand-lr-btn').addEventListener('click', () => {
+  currentSide = currentSide === 'right' ? 'left' : 'right';
+  document.getElementById('hand-lr-btn').textContent =
+    currentSide === 'right' ? '右手 ⇄ 左手' : '左手 ⇄ 右手';
+
+  if (currentMode === 'hand') {
+    const cp = CAM_PRESETS[`hand_${currentSide}`];
+    animateCameraTo(cp.pos, cp.target, 0.5);
+  } else {
+    const cp = CAM_PRESETS[`ear_${currentSide}`];
+    animateCameraTo(cp.pos, cp.target, 0.5);
+  }
+  renderFingerSliders(activeFingerGroup);
+  showToast(currentSide === 'right' ? '右手' : '左手');
+});
+
+// Presets
+document.getElementById('preset-row').addEventListener('click', e => {
+  const btn = e.target.closest('.preset-btn');
+  if (btn) applyPreset(btn.dataset.preset);
+});
+
+// File loading
+const folderInput = document.getElementById('folder-input');
+folderInput.addEventListener('change', e => {
+  if (e.target.files.length) ingestFiles(e.target.files);
+});
+
+async function openFolderPicker() {
+  if (window.showDirectoryPicker) {
+    try {
+      const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+      await _IDB.save('model-dir', dirHandle);
+      await autoLoadDirHandle(dirHandle);
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+  }
+  folderInput.value = ''; folderInput.click();
+}
+
+// Drag & drop
+document.addEventListener('dragover', e => {
+  e.preventDefault();
+  document.getElementById('ov-dropzone').classList.add('drag-active');
+});
+document.addEventListener('dragleave', e => {
+  if (!e.relatedTarget || !document.body.contains(e.relatedTarget)) {
+    document.getElementById('ov-dropzone').classList.remove('drag-active');
+  }
+});
+document.addEventListener('drop', async e => {
+  e.preventDefault();
+  document.getElementById('ov-dropzone').classList.remove('drag-active');
+  const items = Array.from(e.dataTransfer?.items ?? []);
+  if (items.length && items[0].getAsFileSystemHandle) {
+    try {
+      const handle = await items[0].getAsFileSystemHandle();
+      if (handle?.kind === 'directory') {
+        await _IDB.save('model-dir', handle);
+        await autoLoadDirHandle(handle);
+        return;
+      }
+    } catch {}
+  }
+  if (items.length) {
+    const files = [];
+    await Promise.all(items.map(async item => {
+      const entry = item.webkitGetAsEntry?.();
+      if (!entry) return;
+      await collectEntry(entry, files);
+    }));
+    if (files.length) { ingestFiles(files); return; }
+  }
+  if (e.dataTransfer?.files?.length) ingestFiles(e.dataTransfer.files);
+});
+
+async function collectEntry(entry, out) {
+  if (!entry) return;
+  if (entry.isFile) {
+    await new Promise(res => entry.file(f => { out.push(f); res(); }, res));
+  } else if (entry.isDirectory) {
+    const reader = entry.createReader();
+    let batch;
+    do {
+      batch = await new Promise(res => reader.readEntries(res, () => res([])));
+      await Promise.all(batch.map(child => collectEntry(child, out)));
+    } while (batch.length > 0);
+  }
+}
+
+document.getElementById('ov-browse-btn').addEventListener('click', openFolderPicker);
+
+// ── Pose helpers ───────────────────────────────────────────────────────────────
+function resetPose() {
+  if (!mmdMesh) return;
+  // Reset only hand/wrist bones for current side
+  const allBones = [
+    ...FINGER_BONES[currentSide].map(b => b.idx),
+    ...WRIST_BONES[currentSide].map(b => b.idx),
+  ];
+  allBones.forEach(idx => {
+    const b = mmdMesh.skeleton.bones[idx];
+    if (b) b.rotation.set(0, 0, 0);
+  });
+  mmdMesh.skeleton.update();
+  syncSlidersForCurrentFinger();
+  showToast('リセット');
+}
+
+function doScreenshot() {
+  renderer.render(scene, camera);
+  const a = Object.assign(document.createElement('a'), {
+    href:     canvas.toDataURL('image/png'),
+    download: 'hand-pose.png',
+  });
+  a.click();
+  showToast('📷 スクリーンショット保存');
+}
+
+// ── Overlay helpers ────────────────────────────────────────────────────────────
+function showOverlayLoading(msg) {
+  const ov = document.getElementById('overlay');
+  ov.style.display = 'flex';
+  document.getElementById('ov-dropzone').style.display   = 'none';
+  document.getElementById('ov-browse-btn').style.display = 'none';
+  document.getElementById('ov-autoload-btn').style.display = 'none';
+  document.getElementById('ov-autoload-hint').style.display = 'none';
+  document.getElementById('ov-spinner').style.display    = 'block';
+  document.getElementById('ov-msg').style.color          = '#86cecb';
+  document.getElementById('ov-msg').textContent          = msg;
+}
+
+function showOverlayError(msg) {
+  const ov = document.getElementById('overlay');
+  ov.style.display = 'flex';
+  document.getElementById('ov-dropzone').style.display   = 'flex';
+  document.getElementById('ov-browse-btn').style.display = '';
+  document.getElementById('ov-spinner').style.display    = 'none';
+  document.getElementById('ov-msg').style.color          = '#e05555';
+  document.getElementById('ov-msg').textContent          = msg;
+}
+
+function hideOverlay() {
+  document.getElementById('overlay').style.display = 'none';
+}
+
+// ── Startup ───────────────────────────────────────────────────────────────────
+tryAutoLoad().catch(() => {});
+</script>
+</body>
+</html>

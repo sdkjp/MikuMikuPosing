@@ -417,7 +417,7 @@ body.vmd-active #pose-bar { bottom: 72px; }
 
 <!-- ═══ TOOLBAR ══════════════════════════════════════ -->
 <div id="toolbar">
-  <span class="tb-title">Miku Miku Posing</span>
+  <span class="tb-title">MMP</span>
   <div class="tb-sep"></div>
   <button class="tb-btn accent" data-action="open">フォルダを開く</button>
   <div class="tb-sep"></div>
@@ -425,14 +425,15 @@ body.vmd-active #pose-bar { bottom: 72px; }
   <button class="tb-btn" data-action="save-pose" title="現在のポーズをJSONで保存">ポーズ保存</button>
   <button class="tb-btn" data-action="load-pose" title="JSONファイルからポーズを読み込む">ポーズ読込</button>
   <button class="tb-btn" data-action="screenshot" title="現在の画面をPNGで保存">スクリーンショット</button>
-  <button class="tb-btn" data-action="pose-from-photo" title="写真から全身ポーズを推定する">全身読込</button>
-  <button class="tb-btn" data-action="hand-pose" title="手の写真から指ポーズ＋カメラ移動">手読込</button>
+  <button class="tb-btn" data-action="pose-from-photo" title="写真から全身ポーズを推定する">📷 全身ポーズ</button>
+  <button class="tb-btn" data-action="hand-pose" title="手の写真から指ポーズ＋カメラ移動">✋ 手ポーズ</button>
   <button class="tb-btn" data-action="open-vmd" title="VMDモーションファイルを読み込む">VMD読込（モーション読込）</button>
   <button class="tb-btn" data-action="open-settings" title="環境設定 (空/床/ライト)">設定</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" data-action="toggle-left"  title="ボーンパネルを開閉">⟨ ボーン</button>
   <button class="tb-btn" data-action="toggle-right" title="マテリアルパネルを開閉">マテリアル ⟩</button>
   <div class="tb-spacer"></div>
+  <a href="hand-viewer.html" class="tb-btn" style="text-decoration:none;" title="漫画家・イラストレーター向け 手・耳ビューア">✋ 手・耳</a>
   <span class="tb-hint" id="tb-hint">マウスドラッグ: 回転 &nbsp;|&nbsp; ホイール: ズーム &nbsp;|&nbsp; 右ドラッグ: 移動</span>
 </div>
 
@@ -460,13 +461,15 @@ body.vmd-active #pose-bar { bottom: 72px; }
 
 <!-- ═══ OVERLAY ═══════════════════════════════════════ -->
 <div id="overlay">
-  <div class="ov-logo">Miku Miku Posing</div>
-  <div class="ov-sub">Ver.4.0</div>
+  <div class="ov-logo">MikuMikuPosing</div>
+  <div class="ov-sub">MikuMikuDance PMX Posing</div>
   <div id="ov-dropzone">
     <div class="ov-drop-icon">📁</div>
     <div>「モデルフォルダ」をここにドロップ</div>
     <div class="ov-drop-hint">フォルダごとブラウザにドラッグ＆ドロップ</div>
   </div>
+  <button id="ov-autoload-btn" style="display:none;padding:9px 24px;border-radius:7px;border:1px solid #e12885;background:#e12885;color:#fffeec;font-size:13px;cursor:pointer;transition:background 0.12s;font-family:inherit;letter-spacing:0.1em;">↩ 前回のフォルダを再読み込み</button>
+  <div id="ov-autoload-hint" style="display:none;font-size:10px;color:#86cecb;text-align:center;"></div>
   <button id="ov-browse-btn">📂 フォルダを選択して開く</button>
   <div style="font-size:10px;color:#86cecb;text-align:center;max-width:320px;line-height:1.6;">
     ボタン使用時: ダイアログで「モデルフォルダ」を開く<br>
@@ -829,6 +832,118 @@ onResize();
   renderer.render(scene, camera);
 })();
 
+
+// ════════════════════════════════════════════════════════════════════════════════
+// AUTO-LOAD  (IndexedDB + File System Access API)
+// Persists the model folder handle across sessions so the user only has to
+// pick the folder once.  On subsequent page loads the handle is restored and
+// — if Chrome already granted permission — the model loads automatically.
+// If permission needs to be re-confirmed, an "↩ 再読み込み" button appears.
+// ════════════════════════════════════════════════════════════════════════════════
+
+const _IDB = (() => {
+  const DB = 'MMP_AutoLoad', VER = 1, STORE = 'handles';
+  const open = () => new Promise((res, rej) => {
+    const r = indexedDB.open(DB, VER);
+    r.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
+    r.onsuccess = e => res(e.target.result);
+    r.onerror   = e => rej(e.target.error);
+  });
+  return {
+    save: async (key, val) => {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(val, key);
+        tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
+      });
+    },
+    get: async (key) => {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx  = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(key);
+        req.onsuccess = e => res(e.target.result ?? null);
+        req.onerror   = e => rej(e.target.error);
+      });
+    },
+  };
+})();
+
+// Collect all File objects recursively from a FileSystemDirectoryHandle
+async function collectFilesFromDirHandle(dirHandle, out = []) {
+  for await (const [, entry] of dirHandle) {
+    if (entry.kind === 'file') {
+      out.push(await entry.getFile());
+    } else if (entry.kind === 'directory') {
+      await collectFilesFromDirHandle(entry, out);
+    }
+  }
+  return out;
+}
+
+// Called once at startup — tries to silently reload the last used folder.
+// Shows a "re-load" button if Chrome needs user interaction for permission.
+async function tryAutoLoad() {
+  if (!window.FileSystemDirectoryHandle) return; // API unavailable (Firefox etc.)
+  let handle;
+  try { handle = await _IDB.get('model-dir'); } catch { return; }
+  if (!handle) return;
+
+  // Check current permission without prompting
+  let perm;
+  try { perm = await handle.queryPermission({ mode: 'read' }); } catch { return; }
+
+  if (perm === 'granted') {
+    // Permission already granted — auto-load without user gesture
+    autoLoadModelHandle(handle);
+    return;
+  }
+
+  // Need a user gesture to re-request permission → show the button
+  const btn  = document.getElementById('ov-autoload-btn');
+  const hint = document.getElementById('ov-autoload-hint');
+  btn.textContent = `↩ 「${handle.name}」を再読み込み`;
+  btn.style.display = '';
+  hint.textContent  = '前回使用したフォルダを一発読み込み（許可が必要です）';
+  hint.style.display = '';
+  btn.onclick = async () => {
+    btn.disabled = true;
+    try {
+      const newPerm = await handle.requestPermission({ mode: 'read' });
+      if (newPerm === 'granted') {
+        await autoLoadModelHandle(handle);
+      } else {
+        hint.textContent = '許可が得られませんでした。手動でフォルダを選択してください。';
+      }
+    } catch (e) {
+      hint.textContent = 'エラー: ' + (e?.message ?? String(e));
+    }
+    btn.disabled = false;
+  };
+}
+
+async function autoLoadModelHandle(dirHandle) {
+  showOverlayLoading(`「${dirHandle.name}」を読み込み中...`);
+  const files = await collectFilesFromDirHandle(dirHandle);
+  // Set flag so hideOverlay() will trigger VMD auto-load once the model finishes
+  _onHideOverlayOnce = () => autoLoadVmd();
+  await ingestFiles(files);
+}
+
+async function autoLoadVmd() {
+  if (!window.FileSystemFileHandle) return;
+  let handle;
+  try { handle = await _IDB.get('vmd-file'); } catch { return; }
+  if (!handle) return;
+  let perm;
+  try { perm = await handle.queryPermission({ mode: 'read' }); } catch { return; }
+  if (perm !== 'granted') return;
+  try {
+    const file = await handle.getFile();
+    loadVmd(URL.createObjectURL(file), file.name);
+  } catch { /* VMD auto-load failed silently */ }
+}
 
 // ════════════════════════════════════════════════════════════════════════════════
 // FILE LOADING
@@ -1336,8 +1451,16 @@ function showOverlayError(msg) {
   ovMsg.textContent         = msg;
 }
 
+// Optional one-shot callback, called when overlay hides (model finished loading)
+let _onHideOverlayOnce = null;
+
 function hideOverlay() {
   document.getElementById('overlay').style.display = 'none';
+  if (_onHideOverlayOnce) {
+    const cb = _onHideOverlayOnce;
+    _onHideOverlayOnce = null;
+    cb();
+  }
 }
 
 
@@ -1380,10 +1503,25 @@ function makeAccordion(label, open) {
 const folderInput = document.getElementById('folder-input');
 folderInput.addEventListener('change', e => {
   if (e.target.files.length) ingestFiles(e.target.files);
+  // Note: FileList from <input> doesn't carry a FileSystemDirectoryHandle,
+  // so we can't persist it automatically here. Use the showDirectoryPicker path.
 });
 
-function openFolderPicker() {
-  folderInput.value = ''; // reset so same folder re-triggers change
+async function openFolderPicker() {
+  // Prefer showDirectoryPicker (Chrome 86+) — lets us persist the handle for auto-load
+  if (window.showDirectoryPicker) {
+    try {
+      const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+      await _IDB.save('model-dir', dirHandle);
+      await autoLoadModelHandle(dirHandle);
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return; // user cancelled
+      console.warn('[showDirectoryPicker] failed, falling back to input:', e);
+    }
+  }
+  // Fallback: legacy <input webkitdirectory>
+  folderInput.value = '';
   folderInput.click();
 }
 
@@ -1417,8 +1555,21 @@ document.addEventListener('drop', async e => {
   e.preventDefault();
   ovDropzone.classList.remove('drag-active');
 
-  // Prefer webkitGetAsEntry so folder drops work (dataTransfer.files is empty for folders)
   const items = Array.from(e.dataTransfer?.items ?? []);
+
+  // Try File System Access API handle first (Chrome 86+) — allows auto-load next session
+  if (items.length && items[0].getAsFileSystemHandle) {
+    try {
+      const handle = await items[0].getAsFileSystemHandle();
+      if (handle?.kind === 'directory') {
+        await _IDB.save('model-dir', handle);
+        await autoLoadModelHandle(handle);
+        return;
+      }
+    } catch { /* fall through */ }
+  }
+
+  // Prefer webkitGetAsEntry so folder drops work (dataTransfer.files is empty for folders)
   if (items.length) {
     const files = [];
     await Promise.all(items.map(item => collectFilesFromEntry(item.webkitGetAsEntry?.(), files)));
@@ -1853,9 +2004,44 @@ function stopFrameHold() {
 }
 
 // ── VMD file picker & loader ───────────────────────────────────────────────────
-function openVmdPicker() {
+async function openVmdPicker() {
   if (!mmdMesh) { alert('先にモデルを読み込んでください。'); return; }
+  // Use showOpenFilePicker when available so we can persist the handle for auto-load
+  if (window.showOpenFilePicker) {
+    try {
+      const [handle] = await window.showOpenFilePicker({
+        types: [{ description: 'VMD Motion', accept: { 'application/octet-stream': ['.vmd'] } }],
+        multiple: false,
+      });
+      await _IDB.save('vmd-file', handle);
+      const file = await handle.getFile();
+      loadVMD(file);
+      return;
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+      console.warn('[showOpenFilePicker] failed, falling back:', e);
+    }
+  }
   document.getElementById('vmd-input').click();
+}
+
+// loadVmd — called by auto-load path (takes a blob URL + display name)
+function loadVmd(blobUrl, fileName) {
+  if (!mmdMesh) return;
+  const manager = new THREE.LoadingManager();
+  manager.setURLModifier(url => url === VMD_VIRTUAL ? blobUrl : url);
+  // Don't show loading overlay here (model may not have finished loading yet)
+  new MMDLoader(manager).loadAnimation(VMD_VIRTUAL, mmdMesh,
+    clip => {
+      URL.revokeObjectURL(blobUrl);
+      _loadVmdClip(clip, fileName ?? 'motion.vmd');
+    },
+    undefined,
+    err => {
+      URL.revokeObjectURL(blobUrl);
+      console.error('[VMD auto]', err);
+    }
+  );
 }
 
 document.getElementById('vmd-input').addEventListener('change', e => {
@@ -1863,6 +2049,49 @@ document.getElementById('vmd-input').addEventListener('change', e => {
   if (f) loadVMD(f);
   e.target.value = '';
 });
+
+// Shared clip-setup logic — used by both loadVMD (File) and loadVmd (blob URL)
+function _loadVmdClip(clip, fileName) {
+  if (animAction) animAction.stop();
+  if (mmdHelper)  { mmdHelper.remove(mmdMesh); mmdHelper = null; }
+  else if (animMixer) animMixer.uncacheRoot(mmdMesh);
+
+  // MMDAnimationHelper handles IK (knee/ankle) automatically without Ammo.js
+  mmdHelper = new MMDAnimationHelper({ afterglow: 0 });
+  mmdHelper.add(mmdMesh, { animation: clip, physics: false });
+
+  animMixer  = mmdHelper.objects.get(mmdMesh).mixer;
+  animAction = animMixer.clipAction(clip);
+  animAction.setLoop(THREE.LoopOnce);
+  animAction.clampWhenFinished = true;
+  animDuration = clip.duration;
+  isPlaying    = false;
+  animAction.paused = true;
+
+  const scrubber = document.getElementById('vmd-scrubber');
+  scrubber.max   = animDuration.toFixed(3);
+
+  document.getElementById('vmd-name').textContent = (fileName ?? '').replace(/\.vmd$/i, '');
+  document.getElementById('vmd-bar').classList.add('active');
+  document.body.classList.add('vmd-active');
+  hideOverlay();
+  seekTo(0);
+
+  // Auto-align floor: wait one frame for bone world matrices to propagate
+  requestAnimationFrame(() => {
+    if (!mmdMesh) return;
+    mmdMesh.updateMatrixWorld(true);
+    const _bones = mmdMesh.skeleton.bones;
+    const _bv = new THREE.Vector3();
+    let _minY = Infinity;
+    for (const bi of [1, 2, 3, 4]) {
+      if (_bones[bi]) { _bones[bi].getWorldPosition(_bv); _minY = Math.min(_minY, _bv.y); }
+    }
+    if (isFinite(_minY) && _minY < -0.08) {
+      mmdMesh.position.y -= _minY;
+    }
+  });
+}
 
 function loadVMD(file) {
   if (!mmdMesh) return;
@@ -1874,46 +2103,7 @@ function loadVMD(file) {
   new MMDLoader(manager).loadAnimation(VMD_VIRTUAL, mmdMesh,
     clip => {
       URL.revokeObjectURL(vmdBlobUrl);
-      if (animAction) animAction.stop();
-      if (mmdHelper)  { mmdHelper.remove(mmdMesh); mmdHelper = null; }
-      else if (animMixer) animMixer.uncacheRoot(mmdMesh);
-
-      // MMDAnimationHelper handles IK (knee/ankle) automatically without Ammo.js
-      mmdHelper = new MMDAnimationHelper({ afterglow: 0 });
-      mmdHelper.add(mmdMesh, { animation: clip, physics: false });
-
-      animMixer = mmdHelper.objects.get(mmdMesh).mixer;
-      animAction = animMixer.clipAction(clip);
-      animAction.setLoop(THREE.LoopOnce);
-      animAction.clampWhenFinished = true;
-      animDuration = clip.duration;
-      isPlaying    = false;
-      animAction.paused = true;
-
-      const scrubber = document.getElementById('vmd-scrubber');
-      scrubber.max   = animDuration.toFixed(3);
-
-      document.getElementById('vmd-name').textContent = file.name.replace(/\.vmd$/i, '');
-      document.getElementById('vmd-bar').classList.add('active');
-      document.body.classList.add('vmd-active');
-      hideOverlay();
-      seekTo(0);
-
-      // Auto-align floor: wait one frame for Three.js to propagate bone world matrices,
-      // then check foot IK target Y positions (bones 1-4 = 左/右 足IK・つま先IK)
-      requestAnimationFrame(() => {
-        if (!mmdMesh) return;
-        mmdMesh.updateMatrixWorld(true);
-        const _bones = mmdMesh.skeleton.bones;
-        const _bv = new THREE.Vector3();
-        let _minY = Infinity;
-        for (const bi of [1, 2, 3, 4]) {
-          if (_bones[bi]) { _bones[bi].getWorldPosition(_bv); _minY = Math.min(_minY, _bv.y); }
-        }
-        if (isFinite(_minY) && _minY < -0.08) {
-          mmdMesh.position.y -= _minY; // lift mesh so lowest foot IK is at floor
-        }
-      });
+      _loadVmdClip(clip, file.name);
     },
     undefined,
     err => {
@@ -2319,6 +2509,12 @@ document.addEventListener('keydown', e => {
     case 'm': case 'M':   document.getElementById('sidebar-right').classList.toggle('collapsed'); break;
   }
 });
+
+// ── Auto-load on startup ───────────────────────────────────────────────────────
+// Attempt to restore the last-used model folder from IndexedDB.
+// Chrome often auto-grants read permission for recently used directories,
+// so this can load the model completely silently on the second and later visits.
+tryAutoLoad().catch(() => {/* silent — auto-load is best-effort */});
 </script>
 </body>
 </html>
