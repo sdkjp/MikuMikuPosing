@@ -1222,8 +1222,51 @@ function hideOverlay() {
   document.getElementById('overlay').style.display = 'none';
 }
 
+// ── fetch() auto-load (HTTP / GitHub Pages / npx serve) ─────────────────────
+function loadModelFromURL(modelUrl) {
+  showOverlayLoading('モデルを読み込み中...');
+  if (mmdMesh) {
+    scene.remove(mmdMesh);
+    mmdMesh.geometry?.dispose();
+    const ms = Array.isArray(mmdMesh.material) ? mmdMesh.material : [mmdMesh.material];
+    ms.forEach(m => { m.map?.dispose(); m.dispose(); });
+    mmdMesh = null;
+  }
+  new MMDLoader().load(
+    modelUrl,
+    mesh => {
+      mmdMesh = mesh;
+      mesh.castShadow = mesh.receiveShadow = true;
+      scene.add(mesh);
+      applyMode(currentMode);
+      buildSliders();
+      hideOverlay();
+    },
+    xhr => { if (xhr.total > 0) showOverlayLoading(`読み込み中… ${Math.round(xhr.loaded/xhr.total*100)}%`); },
+    err  => { showOverlayError('ロード失敗:\n' + (err?.message ?? String(err))); }
+  );
+}
+
+async function tryFetchAutoLoad() {
+  if (location.protocol === 'file:') return false;
+  let config;
+  try {
+    const res = await fetch('./auto-load.json', { cache: 'no-cache' });
+    if (!res.ok) return false;
+    config = await res.json();
+  } catch { return false; }
+  if (!config?.model) return false;
+  loadModelFromURL(config.model);
+  return true;
+}
+
 // ── Startup ───────────────────────────────────────────────────────────────────
-tryAutoLoad().catch(() => {});
+(async () => {
+  try {
+    const httpOk = await tryFetchAutoLoad();
+    if (!httpOk) await tryAutoLoad();
+  } catch { /* silent */ }
+})();
 </script>
 </body>
 </html>

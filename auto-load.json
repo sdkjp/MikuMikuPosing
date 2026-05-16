@@ -1,0 +1,6 @@
+{
+  "_comment": "HTTP サーバー経由で開く場合の自動読み込み設定。パスは miku-viewer.html からの相対パス。",
+  "model": "Appearance Miku/Appearance Miku.pmx",
+  "vmd": null,
+  "_vmd_hint": "VMDを自動読み込みしたい場合は vmd に相対パスを指定。例: \"粛聖!! ロリ神レクイエム/motion.vmd\""
+}

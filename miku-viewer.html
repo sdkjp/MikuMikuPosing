@@ -463,18 +463,25 @@ body.vmd-active #pose-bar { bottom: 72px; }
 <div id="overlay">
   <div class="ov-logo">MikuMikuPosing</div>
   <div class="ov-sub">MikuMikuDance PMX Posing</div>
+
+  <!-- ▼ IndexedDB ハンドルがある場合のみ表示 (file:// 環境向け) -->
+  <button id="ov-autoload-btn" style="display:none;padding:10px 28px;border-radius:8px;border:2px solid #e12885;background:#e12885;color:#fffeec;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.12s;font-family:inherit;letter-spacing:0.08em;box-shadow:0 2px 16px rgba(225,40,133,0.4);">↩ 前回のフォルダを自動読み込み</button>
+  <div id="ov-autoload-hint" style="display:none;font-size:10px;color:#86cecb;text-align:center;"></div>
+
   <div id="ov-dropzone">
     <div class="ov-drop-icon">📁</div>
-    <div>「モデルフォルダ」をここにドロップ</div>
-    <div class="ov-drop-hint">フォルダごとブラウザにドラッグ＆ドロップ</div>
+    <div>「Appearance Miku」フォルダをここにドロップ</div>
+    <div class="ov-drop-hint">または下のボタンから選択（次回から自動読み込み）</div>
   </div>
-  <button id="ov-autoload-btn" style="display:none;padding:9px 24px;border-radius:7px;border:1px solid #e12885;background:#e12885;color:#fffeec;font-size:13px;cursor:pointer;transition:background 0.12s;font-family:inherit;letter-spacing:0.1em;">↩ 前回のフォルダを再読み込み</button>
-  <div id="ov-autoload-hint" style="display:none;font-size:10px;color:#86cecb;text-align:center;"></div>
+
   <button id="ov-browse-btn">📂 フォルダを選択して開く</button>
-  <div style="font-size:10px;color:#86cecb;text-align:center;max-width:320px;line-height:1.6;">
-    ボタン使用時: ダイアログで「モデルフォルダ」を開く<br>
-    <b style="color:#137a7f">1回クリックして選択</b>→「開く / Choose」ボタンを押してください
+
+  <div style="font-size:10px;color:#86cecb;text-align:center;max-width:340px;line-height:1.9;border:1px solid #2a4a4a;border-radius:8px;padding:9px 14px;background:rgba(19,122,127,0.06);">
+    🌐 <b style="color:#c3e5e7">HTTP サーバー経由</b>（npx serve / VS Code Live Server）なら<br>
+    <b style="color:#86cecb">auto-load.json</b> を置くだけで完全自動読み込み<br>
+    📁 <b style="color:#c3e5e7">file:// で開く場合</b>はボタンを<b style="color:#c3e5e7">1回押すだけ</b>で次回から自動
   </div>
+
   <div id="ov-spinner"></div>
   <div id="ov-msg"></div>
 </div>
@@ -834,7 +841,81 @@ onResize();
 
 
 // ════════════════════════════════════════════════════════════════════════════════
-// AUTO-LOAD  (IndexedDB + File System Access API)
+// AUTO-LOAD A: fetch() from auto-load.json
+// Works when served via HTTP (npx serve / VS Code Live Server / GitHub Pages).
+// No user interaction required — loads model (and optionally VMD) automatically.
+// ════════════════════════════════════════════════════════════════════════════════
+
+// Load model directly from a URL (no blob/fileMap needed for HTTP serving)
+function loadModelFromURL(modelUrl) {
+  showOverlayLoading('モデルを読み込み中...');
+
+  if (mmdMesh) {
+    scene.remove(mmdMesh);
+    mmdMesh.geometry?.dispose();
+    const ms = Array.isArray(mmdMesh.material) ? mmdMesh.material : [mmdMesh.material];
+    ms.forEach(m => { m.map?.dispose(); m.envMap?.dispose(); m.dispose(); });
+    mmdMesh = null;
+  }
+  ikSolver = null; ikAffectedBones.clear();
+
+  new MMDLoader().load(
+    modelUrl,
+    mesh => {
+      mmdMesh = mesh;
+      mesh.castShadow = mesh.receiveShadow = true;
+      scene.add(mesh);
+      const iks = mesh.userData?.MMD?.iks ?? [];
+      ikSolver = new CCDIKSolver(mesh, iks);
+      ikAffectedBones.clear();
+      iks.forEach(ik => {
+        ikAffectedBones.add(ik.effector);
+        ik.links?.forEach(link => ikAffectedBones.add(link.index));
+      });
+      fitCamera(mesh);
+      buildBonePanel(mesh);
+      buildMaterialPanel(mesh);
+      hideOverlay();
+    },
+    xhr => { if (xhr.total > 0) showOverlayLoading(`読み込み中… ${Math.round(xhr.loaded/xhr.total*100)}%`); },
+    err => { console.error('[MMDLoader URL]', err); showOverlayError('ロード失敗:\n' + (err?.message ?? String(err))); }
+  );
+}
+
+// Load VMD directly from a URL
+function loadVMDFromURL(vmdUrl) {
+  if (!mmdMesh) return;
+  new MMDLoader().loadAnimation(
+    vmdUrl, mmdMesh,
+    clip => { _loadVmdClip(clip, decodeURIComponent(vmdUrl.split('/').pop())); },
+    undefined,
+    err  => console.error('[VMD URL]', err)
+  );
+}
+
+// Try to fetch auto-load.json and load model (+ optional VMD) automatically.
+// Returns true if a config was found and loading was started.
+async function tryFetchAutoLoad() {
+  // Only works on HTTP(S) — file:// fetch is blocked by CORS
+  if (location.protocol === 'file:') return false;
+  let config;
+  try {
+    const res = await fetch('./auto-load.json', { cache: 'no-cache' });
+    if (!res.ok) return false;
+    config = await res.json();
+  } catch { return false; }
+  if (!config?.model) return false;
+
+  // Hook VMD auto-load to fire after model finishes loading
+  if (config.vmd) {
+    _onHideOverlayOnce = () => loadVMDFromURL(config.vmd);
+  }
+  loadModelFromURL(config.model);
+  return true;
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// AUTO-LOAD B: IndexedDB + File System Access API
 // Persists the model folder handle across sessions so the user only has to
 // pick the folder once.  On subsequent page loads the handle is restored and
 // — if Chrome already granted permission — the model loads automatically.
@@ -2511,10 +2592,14 @@ document.addEventListener('keydown', e => {
 });
 
 // ── Auto-load on startup ───────────────────────────────────────────────────────
-// Attempt to restore the last-used model folder from IndexedDB.
-// Chrome often auto-grants read permission for recently used directories,
-// so this can load the model completely silently on the second and later visits.
-tryAutoLoad().catch(() => {/* silent — auto-load is best-effort */});
+// Priority 1: fetch() from auto-load.json (works on HTTP / GitHub Pages / npx serve)
+// Priority 2: IndexedDB handle (works on file:// after the user has picked once)
+(async () => {
+  try {
+    const httpOk = await tryFetchAutoLoad();
+    if (!httpOk) await tryAutoLoad();
+  } catch { /* silent — auto-load is best-effort */ }
+})();
 </script>
 </body>
 </html>
