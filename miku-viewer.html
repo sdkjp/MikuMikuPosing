@@ -425,7 +425,8 @@ body.vmd-active #pose-bar { bottom: 72px; }
   <button class="tb-btn" data-action="save-pose" title="現在のポーズをJSONで保存">ポーズ保存</button>
   <button class="tb-btn" data-action="load-pose" title="JSONファイルからポーズを読み込む">ポーズ読込</button>
   <button class="tb-btn" data-action="screenshot" title="現在の画面をPNGで保存">スクリーンショット</button>
-  <button class="tb-btn" data-action="pose-from-photo" title="写真からポーズを推定する">📷 写真ポーズ</button>
+  <button class="tb-btn" data-action="pose-from-photo" title="写真から全身ポーズを推定する">📷 全身ポーズ</button>
+  <button class="tb-btn" data-action="hand-pose" title="手の写真から指ポーズ＋カメラ移動">✋ 手ポーズ</button>
   <button class="tb-btn" data-action="open-vmd" title="VMDモーションファイルを読み込む">VMD読込（モーション読込）</button>
   <button class="tb-btn" data-action="open-settings" title="環境設定 (空/床/ライト)">設定</button>
   <div class="tb-sep"></div>
@@ -1413,7 +1414,8 @@ document.getElementById('toolbar').addEventListener('click', e => {
     case 'save-pose':     savePose();         break;
     case 'load-pose':     loadPoseDialog();   break;
     case 'screenshot':     doScreenshot();     break;
-    case 'pose-from-photo': openPhotoPicker(); break;
+    case 'pose-from-photo': openPhotoPicker();     break;
+    case 'hand-pose':       openHandPhotoPicker(); break;
     case 'open-vmd':      openVmdPicker();    break;
     case 'open-settings': openSettings();     break;
     case 'toggle-left': {
@@ -1977,15 +1979,27 @@ async function loadPoseLandmarker() {
   return _poseLandmarker;
 }
 
+let photoMode = 'body'; // 'body' | 'hand'
+
 function openPhotoPicker() {
   if (!mmdMesh) { alert('先にモデルを読み込んでください。'); return; }
+  photoMode = 'body';
+  document.getElementById('photo-input').value = '';
+  document.getElementById('photo-input').click();
+}
+
+function openHandPhotoPicker() {
+  if (!mmdMesh) { alert('先にモデルを読み込んでください。'); return; }
+  photoMode = 'hand';
   document.getElementById('photo-input').value = '';
   document.getElementById('photo-input').click();
 }
 
 document.getElementById('photo-input').addEventListener('change', e => {
   const f = e.target.files[0];
-  if (f) applyPoseFromPhoto(f);
+  if (!f) return;
+  if (photoMode === 'hand') applyHandPoseFromPhoto(f);
+  else applyPoseFromPhoto(f);
 });
 
 async function applyPoseFromPhoto(file) {
@@ -2083,6 +2097,182 @@ function applyPoseFromLandmarks(lms) {
   applyBoneDir(67, UP, lmV(0).sub(neck));
 
   mmdMesh.skeleton.update();
+}
+
+// ════════════════════════════════════════════════════════════════════════════════
+// HAND-POSE  (MediaPipe HandLandmarker — 21 landmarks → finger bones + camera)
+// ════════════════════════════════════════════════════════════════════════════════
+
+let _handLandmarker = null;
+
+async function loadHandLandmarker() {
+  if (_handLandmarker) return _handLandmarker;
+  showOverlayLoading('HandLandmarkerを読み込み中...\n(初回は少し時間がかかります)');
+  const mod    = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+  const vision = await mod.FilesetResolver.forVisionTasks(
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+  );
+  _handLandmarker = await mod.HandLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',
+      delegate: 'CPU',
+    },
+    runningMode: 'IMAGE',
+    numHands: 2,
+  });
+  return _handLandmarker;
+}
+
+// bone mapping: [boneIdx, lmFrom, lmTo]
+// Thumb joints CMC→MCP→IP→TIP (indices 1-4)
+// Other fingers: MCP→PIP→DIP→TIP (indices 5-8, 9-12, 13-16, 17-20)
+const FINGER_MAP_RIGHT = [
+  [28,1,2],[29,2,3],[30,3,4],          // thumb
+  [31,5,6],[32,6,7],[33,7,8],          // index
+  [34,9,10],[35,10,11],[36,11,12],     // middle
+  [37,13,14],[38,14,15],[39,15,16],    // ring
+  [40,17,18],[41,18,19],[42,19,20],    // pinky
+];
+const FINGER_MAP_LEFT = [
+  [51,1,2],[52,2,3],[53,3,4],
+  [54,5,6],[55,6,7],[56,7,8],
+  [57,9,10],[58,10,11],[59,11,12],
+  [60,13,14],[61,14,15],[62,15,16],
+  [63,17,18],[64,18,19],[65,19,20],
+];
+
+async function applyHandPoseFromPhoto(file) {
+  if (!mmdMesh) return;
+  try {
+    const lm = await loadHandLandmarker();
+    showOverlayLoading('手のポーズを推定中...');
+
+    const imgUrl = URL.createObjectURL(file);
+    const img    = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = imgUrl; });
+    URL.revokeObjectURL(imgUrl);
+
+    const result = lm.detect(img);
+    if (!result.worldLandmarks?.length) {
+      hideOverlay();
+      alert('手が検出されませんでした。\n手がはっきり写った写真を使用してください。');
+      return;
+    }
+
+    // Process each detected hand (up to 2)
+    for (let hi = 0; hi < result.worldLandmarks.length; hi++) {
+      const worldLms  = result.worldLandmarks[hi];
+      const normLms   = result.landmarks[hi];
+      // MediaPipe 'Right'/'Left' = as seen in image; for front-facing photo, mirror handedness
+      const rawHand   = result.handedness[hi][0].categoryName; // 'Right' or 'Left'
+      // For a standard front-facing photo, the person's right hand appears on the LEFT of image
+      // → MediaPipe labels it 'Left'. We mirror here to match the MMD character.
+      const mmdHand   = rawHand === 'Right' ? 'Left' : 'Right';
+
+      applyHandFingerBones(worldLms, mmdHand);
+
+      // Camera match: only for first (highest confidence) hand
+      if (hi === 0) matchCameraToHand(normLms, mmdHand);
+    }
+
+    // Sync sliders for finger bones
+    const allFingerBones = new Set([
+      ...FINGER_MAP_RIGHT.map(r=>r[0]),
+      ...FINGER_MAP_LEFT.map(r=>r[0]),
+    ]);
+    document.querySelectorAll('input[type=range][data-bone-idx]').forEach(s => {
+      if (!allFingerBones.has(+s.dataset.boneIdx)) return;
+      const bone = mmdMesh.skeleton.bones[+s.dataset.boneIdx];
+      if (!bone) return;
+      const v = bone.rotation[s.dataset.axis];
+      s.value = v;
+      const el = s.closest('.axis-row')?.querySelector('.ax-val');
+      if (el) el.textContent = toDeg(v);
+    });
+
+    hideOverlay();
+  } catch (err) {
+    console.error('[HandLandmarker]', err);
+    showOverlayError('手のポーズ推定に失敗しました:\n' + (err?.message ?? String(err)));
+  }
+}
+
+function applyHandFingerBones(worldLms, mmdHand) {
+  const map = mmdHand === 'Right' ? FINGER_MAP_RIGHT : FINGER_MAP_LEFT;
+
+  // In T-pose, right fingers point along +X, left fingers along -X
+  const tPoseDir = mmdHand === 'Right'
+    ? new THREE.Vector3(1, 0, 0)
+    : new THREE.Vector3(-1, 0, 0);
+
+  // MediaPipe hand world coords: origin at wrist, +y up, +z toward camera → flip Z
+  const lmV   = i => new THREE.Vector3(worldLms[i].x, worldLms[i].y, -worldLms[i].z);
+  const lmDir = (a, b) => lmV(b).sub(lmV(a)).normalize();
+
+  // Reset finger bones to T-pose first
+  map.forEach(([bi]) => {
+    const b = mmdMesh.skeleton.bones[bi];
+    if (b) b.rotation.set(0, 0, 0);
+  });
+  mmdMesh.skeleton.update();
+  mmdMesh.updateMatrixWorld(true);
+
+  for (const [boneIdx, lmA, lmB] of map) {
+    const bone      = mmdMesh.skeleton.bones[boneIdx];
+    if (!bone) continue;
+    const targetDir = lmDir(lmA, lmB);
+    if (targetDir.lengthSq() < 1e-6) continue;
+    if (tPoseDir.dot(targetDir) < -0.9999) continue;
+
+    const worldQ      = new THREE.Quaternion().setFromUnitVectors(tPoseDir, targetDir);
+    const parentWorldQ = new THREE.Quaternion();
+    if (bone.parent) {
+      bone.parent.updateWorldMatrix(true, false);
+      bone.parent.getWorldQuaternion(parentWorldQ);
+    }
+    const localQ = parentWorldQ.clone().invert().multiply(worldQ);
+
+    const clamp = x => Math.max(-Math.PI * 0.75, Math.min(Math.PI * 0.75, x));
+    const euler = new THREE.Euler().setFromQuaternion(localQ, 'XYZ');
+    bone.rotation.set(clamp(euler.x), clamp(euler.y), clamp(euler.z));
+    bone.updateWorldMatrix(false, true);
+  }
+  mmdMesh.skeleton.update();
+}
+
+function matchCameraToHand(normLms, mmdHand) {
+  // Wrist bone: 24 = right wrist, 47 = left wrist
+  const wristBoneIdx = mmdHand === 'Right' ? 24 : 47;
+  const wristBone    = mmdMesh?.skeleton.bones[wristBoneIdx];
+  if (!wristBone) return;
+
+  const wristPos = new THREE.Vector3();
+  wristBone.getWorldPosition(wristPos);
+
+  // Hand bounding box in normalized image coords (0..1)
+  const xs = normLms.map(l => l.x);
+  const ys = normLms.map(l => l.y);
+  const bx = { min: Math.min(...xs), max: Math.max(...xs) };
+  const by = { min: Math.min(...ys), max: Math.max(...ys) };
+  const handSize = Math.max(bx.max - bx.min, by.max - by.min, 0.04);
+  const cx       = (bx.min + bx.max) / 2; // 0..1
+  const cy       = (by.min + by.max) / 2; // 0..1
+
+  // Camera distance: inverse of apparent hand size in image
+  // When handSize ≈ 0.35 → close-up ≈ 4 units; larger hand → closer
+  const camDist = Math.max(2, Math.min(22, 1.4 / handSize));
+
+  // Camera angle: cx/cy offset from image center → orbit angle around wrist
+  // cx: 0.5 = front; <0.5 = camera right of hand; >0.5 = camera left
+  // cy: 0.5 = level;  >0.5 = camera above (looking down); <0.5 = camera below
+  const hAngle = (0.5 - cx) * Math.PI * 0.9; // horizontal orbit
+  const vAngle = (cy  - 0.5) * Math.PI * 0.6; // vertical orbit
+
+  const camX = wristPos.x + camDist * Math.sin(hAngle) * Math.cos(vAngle);
+  const camY = wristPos.y + camDist * Math.sin(vAngle);
+  const camZ = wristPos.z + camDist * Math.cos(hAngle) * Math.cos(vAngle);
+
+  animateCameraTo([camX, camY, camZ], wristPos.toArray(), 1.2);
 }
 
 // ─── Keyboard shortcuts ────────────────────────────────────────────────────────
