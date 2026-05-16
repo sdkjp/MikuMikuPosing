@@ -22,1262 +22,1013 @@ html, body {
   font: 13px/1.4 'DotGothic16', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
   letter-spacing: 0.05em; touch-action: none;
 }
-/* ── Toolbar ───────────────────────────────────────────── */
 #toolbar {
   position: fixed; top: 0; left: 0; right: 0; height: 48px;
   background: linear-gradient(180deg,#158a90,#137a7f);
   border-bottom: 1px solid #86cecb;
-  display: flex; align-items: center; gap: 6px; padding: 0 12px;
-  z-index: 100; flex-shrink: 0;
+  display: flex; align-items: center; gap: 5px; padding: 0 10px;
+  z-index: 100; overflow-x: auto; flex-shrink: 0;
 }
-.tb-title { font-size: 14px; font-weight: 800; color: #fffeec; letter-spacing: 0.05em; margin-right: 4px; white-space: nowrap; }
+.tb-title { font-size: 14px; font-weight: 800; color: #fffeec; margin-right: 2px; white-space: nowrap; }
 .tb-sep   { width: 1px; height: 28px; background: #86cecb; margin: 0 2px; flex-shrink: 0; }
 .tb-btn {
-  padding: 6px 13px; border: 1px solid #86cecb; border-radius: 6px;
+  padding: 6px 11px; border: 1px solid #86cecb; border-radius: 6px;
   background: #c3e5e7; color: #373b3e; font: inherit; font-size: 12px; cursor: pointer;
-  white-space: nowrap; transition: background 0.12s, border-color 0.12s;
-  flex-shrink: 0; letter-spacing: 0.05em;
+  white-space: nowrap; transition: background 0.12s; flex-shrink: 0; letter-spacing: 0.04em;
 }
-.tb-btn:hover { background: #86cecb; }
+.tb-btn:hover  { background: #86cecb; }
 .tb-btn.active { background: #e12885; border-color: #c0206a; color: #fffeec; }
 .tb-spacer { flex: 1; }
 
-/* ── Layout ────────────────────────────────────────────── */
 #main {
   position: fixed; top: 48px; bottom: 0; left: 0; right: 0;
   display: flex; flex-direction: column;
 }
 #viewport { flex: 1; position: relative; min-height: 0; }
-#webgl-canvas { width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
+#webgl-canvas { width: 100%; height: 100%; display: block; touch-action: none; outline: none; }
 
-/* ── Bottom Panel ──────────────────────────────────────── */
-#bottom-panel {
-  background: #0d0d1a; border-top: 2px solid #137a7f;
-  flex-shrink: 0; overflow: hidden;
-  display: flex; flex-direction: column;
+/* ── Long-press indicator ─── */
+#press-ring {
+  position: fixed; pointer-events: none; z-index: 200; display: none;
+  width: 52px; height: 52px; border-radius: 50%;
+  border: 3px solid #e12885;
+  transform: translate(-50%,-50%) scale(0);
+  transition: transform 0.28s ease-out, opacity 0.15s;
 }
+#press-ring.show { display: block; }
+#press-ring.grow { transform: translate(-50%,-50%) scale(1); }
 
-/* Finger tabs */
-#finger-tabs {
-  display: flex; background: #0d0d1a; border-bottom: 1px solid #137a7f;
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
-}
-.finger-tab {
-  flex: 1; min-width: 52px; padding: 8px 4px 7px;
-  text-align: center; font-size: 11px; cursor: pointer; color: #86cecb;
-  border-right: 1px solid #137a7f; user-select: none;
-  transition: background 0.12s, color 0.12s;
-  white-space: nowrap; letter-spacing: 0;
-}
-.finger-tab:last-child { border-right: none; }
-.finger-tab.active { background: #137a7f; color: #fffeec; }
-.finger-tab .ft-icon { font-size: 18px; display: block; margin-bottom: 2px; line-height: 1; }
-
-/* Joint sliders */
-#joint-sliders {
-  display: flex; gap: 0; padding: 8px 10px 10px;
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
-  align-items: stretch;
-}
-.joint-col {
-  flex: 1; min-width: 90px; padding: 0 8px;
-  border-right: 1px solid #1e2e45;
-  display: flex; flex-direction: column; gap: 4px;
-}
-.joint-col:last-child { border-right: none; }
-.joint-label {
-  font-size: 10px; color: #86cecb; text-align: center;
-  margin-bottom: 2px; letter-spacing: 0.05em;
-}
-.axis-row {
-  display: flex; align-items: center; gap: 5px; height: 20px;
-}
-.ax-lbl {
-  width: 12px; font-size: 9px; font-weight: 800; text-align: center;
-  color: #86cecb; flex-shrink: 0;
-}
-input[type=range] {
-  flex: 1; cursor: pointer; accent-color: #e12885;
-  height: 4px; min-width: 60px;
-}
-.ax-val {
-  width: 38px; font-size: 9px; text-align: right; color: #86cecb;
-  font-variant-numeric: tabular-nums; letter-spacing: 0; flex-shrink: 0;
-}
-
-/* Presets */
-#preset-row {
-  display: flex; gap: 6px; padding: 6px 10px 8px;
-  overflow-x: auto; -webkit-overflow-scrolling: touch;
-  border-top: 1px solid #1e2e45;
-}
-.preset-btn {
-  flex: 0 0 auto; padding: 7px 12px; border-radius: 6px;
-  border: 1px solid #137a7f; background: #0d1a2e;
-  color: #86cecb; font: inherit; font-size: 11px; cursor: pointer;
-  white-space: nowrap; transition: background 0.12s, color 0.12s;
-}
-.preset-btn:hover, .preset-btn:active { background: #137a7f; color: #fffeec; }
-
-/* ── Overlay ────────────────────────────────────────────── */
-#overlay {
-  position: fixed; inset: 0; z-index: 300;
-  background: rgba(26,26,46,0.97);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 16px;
-}
-.ov-logo  { font-size: 24px; font-weight: 800; color: #137a7f; letter-spacing: 2px; }
-.ov-sub   { font-size: 12px; color: #86cecb; text-align: center; }
-#ov-autoload-btn {
-  padding: 10px 26px; border-radius: 8px; border: 1px solid #e12885;
-  background: #e12885; color: #fffeec; font: inherit; font-size: 13px;
-  cursor: pointer; display: none; transition: background 0.12s;
-}
-#ov-autoload-btn:hover { background: #c0206a; }
-#ov-autoload-hint { font-size: 10px; color: #86cecb; display: none; text-align: center; }
-#ov-dropzone {
-  width: min(320px, 90vw); padding: 24px;
-  border: 2px dashed #137a7f; border-radius: 12px;
-  text-align: center; color: #86cecb; font-size: 13px;
-  transition: border-color 0.15s, background 0.15s;
-}
-#ov-dropzone.drag-active { border-color: #86cecb; background: rgba(134,206,203,0.08); }
-.ov-drop-icon { font-size: 32px; margin-bottom: 6px; }
-#ov-browse-btn {
-  padding: 10px 24px; border-radius: 8px; background: #137a7f;
-  border: 1px solid #86cecb; color: #fffeec; font: inherit; font-size: 13px;
-  cursor: pointer; transition: background 0.12s;
-}
-#ov-browse-btn:hover { background: #0f6570; }
-#ov-spinner {
-  width: 36px; height: 36px; border: 3px solid #1e2e45; border-top-color: #137a7f;
-  border-radius: 50%; animation: spin 0.75s linear infinite; display: none;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-#ov-msg { font-size: 12px; color: #fffeec; min-height: 18px; text-align: center; max-width: 300px; }
-
-/* Mode button active state */
-#mode-ear { display: none; }
-
-/* Ear anatomy labels */
+/* ── Ear anatomy labels ─── */
 #ear-labels {
   position: absolute; inset: 0; pointer-events: none; display: none;
 }
 .ear-label {
-  position: absolute; background: rgba(19,122,127,0.88);
-  color: #fffeec; padding: 2px 7px; border-radius: 4px; font-size: 10px;
-  border: 1px solid #86cecb; transform: translate(-50%, -50%);
-  pointer-events: none; white-space: nowrap;
+  position: absolute; background: rgba(20,130,135,0.85);
+  color: #fffeec; font-size: 11px; padding: 2px 7px; border-radius: 4px;
+  white-space: nowrap; pointer-events: none;
+}
+.ear-label::after {
+  content: ''; position: absolute; width: 30px; height: 1px;
+  background: rgba(134,206,203,0.7);
 }
 
-/* Help tooltip */
-#help-toast {
-  position: fixed; bottom: calc(var(--panel-h, 200px) + 10px); left: 50%;
-  transform: translateX(-50%);
-  background: rgba(19,122,127,0.95); color: #fffeec;
-  padding: 8px 16px; border-radius: 8px; font-size: 11px;
-  pointer-events: none; z-index: 200; opacity: 0;
-  transition: opacity 0.3s; white-space: nowrap; text-align: center;
+/* ── Bottom panel ─── */
+#bottom-panel {
+  background: #0d0d1a; border-top: 2px solid #137a7f;
+  flex-shrink: 0; display: flex; flex-direction: column;
+  max-height: 220px;
 }
-#help-toast.show { opacity: 1; }
+/* Finger tabs */
+#finger-tabs {
+  display: flex; border-bottom: 1px solid #137a7f; flex-shrink: 0;
+}
+.finger-tab {
+  flex: 1; padding: 8px 0; font: inherit; font-size: 11px;
+  background: #111122; color: #86cecb; border: none; cursor: pointer;
+  border-right: 1px solid #1e2040; transition: background 0.1s;
+}
+.finger-tab:last-child { border-right: none; }
+.finger-tab.active { background: #137a7f; color: #fffeec; }
+.finger-tab:hover:not(.active) { background: #1a1a40; }
 
-/* Bone highlight glow in 3D view */
-#bone-hover-label {
-  position: fixed; pointer-events: none; z-index: 250; display: none;
-  background: rgba(19,122,127,0.92); color: #fffeec;
-  padding: 3px 9px; border-radius: 5px; font-size: 11px; white-space: nowrap;
-  border: 1px solid #e12885;
+/* Sliders area */
+#slider-area {
+  flex: 1; overflow-y: auto; padding: 6px 10px;
 }
+.slider-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
+}
+.slider-label { font-size: 11px; color: #86cecb; width: 90px; flex-shrink: 0; }
+.slider-range  { flex: 1; accent-color: #e12885; cursor: pointer; min-width: 0; }
+.slider-val    { font-size: 11px; color: #fffeec; width: 34px; text-align: right; flex-shrink: 0; }
 
-/* Long-press ring */
-#long-press-ring {
-  position: fixed; pointer-events: none; z-index: 240; display: none;
-  width: 60px; height: 60px; border-radius: 50%;
-  border: 2.5px solid #e12885; transform: translate(-50%,-50%) scale(0.3);
-  opacity: 0;
+/* Presets */
+#presets {
+  display: flex; gap: 5px; padding: 5px 10px; border-top: 1px solid #1e2040;
+  overflow-x: auto; flex-shrink: 0;
 }
-#long-press-ring.pop { animation: lp-pop 0.25s ease-out forwards; }
-@keyframes lp-pop {
-  0%   { transform: translate(-50%,-50%) scale(0.3); opacity: 0.9; }
-  60%  { transform: translate(-50%,-50%) scale(1.2); opacity: 0.6; }
-  100% { transform: translate(-50%,-50%) scale(1.0); opacity: 0; }
+.preset-btn {
+  padding: 5px 10px; border: 1px solid #137a7f; border-radius: 5px;
+  background: #1a1a3a; color: #86cecb; font: inherit; font-size: 11px;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0; transition: background 0.1s;
 }
-
-/* Large touch targets for mobile */
-@media (max-width: 600px) {
-  .finger-tab { min-width: 58px; padding: 10px 4px 8px; }
-  .finger-tab .ft-icon { font-size: 22px; }
-  input[type=range] { height: 6px; }
-  .joint-col { min-width: 80px; }
-}
+.preset-btn:hover { background: #137a7f; color: #fffeec; }
 </style>
 </head>
 <body>
 
-<!-- TOOLBAR -->
 <div id="toolbar">
-  <span class="tb-title">✋ 手・耳ビューア</span>
+  <span class="tb-title">✋ 手・耳</span>
   <div class="tb-sep"></div>
-  <button class="tb-btn active" id="mode-hand-btn" data-mode="hand">✋ 手</button>
-  <button class="tb-btn"        id="mode-ear-btn"  data-mode="ear" >👂 耳</button>
+  <button class="tb-btn active" id="btn-hand">✋ 手</button>
+  <button class="tb-btn"        id="btn-ear" >👂 耳</button>
   <div class="tb-sep"></div>
-  <button class="tb-btn" id="hand-lr-btn" title="左右切替">右手 ⇄ 左手</button>
+  <button class="tb-btn"        id="btn-side">右</button>
   <div class="tb-sep"></div>
-  <button class="tb-btn" data-action="reset">リセット</button>
-  <button class="tb-btn" data-action="screenshot">📷</button>
-  <button class="tb-btn" data-action="open">📂 開く</button>
+  <button class="tb-btn"        id="btn-reset">リセット</button>
   <div class="tb-spacer"></div>
-  <a href="miku-viewer.html" class="tb-btn" style="text-decoration:none;font-size:11px;" title="メインビューアに戻る">← MMP</a>
-  <span style="font-size:10px;color:#bec8d1;white-space:nowrap;">長押し+ドラッグ で回転</span>
+  <button class="tb-btn"        id="btn-shot">📷</button>
+  <div class="tb-sep"></div>
+  <a href="miku-viewer.html" class="tb-btn" style="text-decoration:none;">← 全身</a>
 </div>
 
-<!-- MAIN -->
 <div id="main">
   <div id="viewport">
-    <canvas id="webgl-canvas" tabindex="0"></canvas>
+    <canvas id="webgl-canvas"></canvas>
     <div id="ear-labels"></div>
-    <div id="bone-hover-label"></div>
-    <div id="long-press-ring"></div>
   </div>
 
-  <!-- BOTTOM PANEL -->
   <div id="bottom-panel">
-    <!-- Finger selector tabs -->
     <div id="finger-tabs">
-      <div class="finger-tab active" data-finger="0"><span class="ft-icon">👍</span>親指</div>
-      <div class="finger-tab"       data-finger="1"><span class="ft-icon">☝️</span>人差し指</div>
-      <div class="finger-tab"       data-finger="2"><span class="ft-icon">🖕</span>中指</div>
-      <div class="finger-tab"       data-finger="3"><span class="ft-icon">💍</span>薬指</div>
-      <div class="finger-tab"       data-finger="4"><span class="ft-icon">🤙</span>小指</div>
-      <div class="finger-tab"       data-finger="5"><span class="ft-icon">🤲</span>手首</div>
+      <button class="finger-tab active" data-finger="thumb" >親指</button>
+      <button class="finger-tab"        data-finger="index" >人差し</button>
+      <button class="finger-tab"        data-finger="middle">中指</button>
+      <button class="finger-tab"        data-finger="ring"  >薬指</button>
+      <button class="finger-tab"        data-finger="pinky" >小指</button>
     </div>
-
-    <!-- Per-joint sliders (filled by JS) -->
-    <div id="joint-sliders"></div>
-
-    <!-- Preset poses -->
-    <div id="preset-row">
-      <button class="preset-btn" data-preset="open">🖐 開く</button>
-      <button class="preset-btn" data-preset="fist">✊ 握る</button>
-      <button class="preset-btn" data-preset="point">☝ 指差し</button>
-      <button class="preset-btn" data-preset="peace">✌ ピース</button>
-      <button class="preset-btn" data-preset="ok">👌 OK</button>
-      <button class="preset-btn" data-preset="pinch">🤏 ピンチ</button>
-      <button class="preset-btn" data-preset="hold">🤙 小指立て</button>
-      <button class="preset-btn" data-preset="claw">🐾 鷲掴み</button>
+    <div id="slider-area"></div>
+    <div id="presets">
+      <button class="preset-btn" data-preset="open">開く</button>
+      <button class="preset-btn" data-preset="fist">握る</button>
+      <button class="preset-btn" data-preset="point">指差し</button>
+      <button class="preset-btn" data-preset="peace">ピース</button>
+      <button class="preset-btn" data-preset="ok">OK</button>
+      <button class="preset-btn" data-preset="pinch">ピンチ</button>
+      <button class="preset-btn" data-preset="rock">ロック</button>
     </div>
   </div>
 </div>
 
-<!-- OVERLAY -->
-<div id="overlay">
-  <div class="ov-logo">✋ 手・耳ビューア</div>
-  <div class="ov-sub">漫画家・イラストレーター向け<br>PMXモデルフォルダを開いてください</div>
-  <button id="ov-autoload-btn">↩ 前回のフォルダを再読み込み</button>
-  <div id="ov-autoload-hint"></div>
-  <div id="ov-dropzone">
-    <div class="ov-drop-icon">📁</div>
-    <div>「Appearance Miku」フォルダをここにドロップ</div>
-    <div style="font-size:11px;margin-top:4px;color:#137a7f">または下のボタンから選択</div>
-  </div>
-  <button id="ov-browse-btn">📂 フォルダを選択して開く</button>
-  <div id="ov-spinner"></div>
-  <div id="ov-msg"></div>
-</div>
-
-<!-- hidden inputs -->
-<input type="file" id="folder-input" webkitdirectory multiple style="display:none">
-
-<!-- HELP TOAST -->
-<div id="help-toast"></div>
+<div id="press-ring"></div>
 
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { MMDLoader }     from 'three/addons/loaders/MMDLoader.js';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-// Appearance Miku finger bone indices
-// Format: [boneIdx, fingerGroup, joint (0=MCP/CMC, 1=PIP/MP, 2=DIP/IP)]
-// Right hand: bones 28-42, Left hand: bones 51-65
-const FINGER_BONES = {
-  right: [
-    // Thumb: CMC, MP, IP
-    { idx: 28, finger: 0, joint: 0, axes: ['y','z'] },
-    { idx: 29, finger: 0, joint: 1, axes: ['y','z'] },
-    { idx: 30, finger: 0, joint: 2, axes: ['y']     },
-    // Index: MCP, PIP, DIP
-    { idx: 31, finger: 1, joint: 0, axes: ['x','y','z'] },
-    { idx: 32, finger: 1, joint: 1, axes: ['x']         },
-    { idx: 33, finger: 1, joint: 2, axes: ['x']         },
-    // Middle
-    { idx: 34, finger: 2, joint: 0, axes: ['x','y','z'] },
-    { idx: 35, finger: 2, joint: 1, axes: ['x']         },
-    { idx: 36, finger: 2, joint: 2, axes: ['x']         },
-    // Ring
-    { idx: 37, finger: 3, joint: 0, axes: ['x','y','z'] },
-    { idx: 38, finger: 3, joint: 1, axes: ['x']         },
-    { idx: 39, finger: 3, joint: 2, axes: ['x']         },
-    // Pinky
-    { idx: 40, finger: 4, joint: 0, axes: ['x','y','z'] },
-    { idx: 41, finger: 4, joint: 1, axes: ['x']         },
-    { idx: 42, finger: 4, joint: 2, axes: ['x']         },
-  ],
-  left: [
-    { idx: 51, finger: 0, joint: 0, axes: ['y','z'] },
-    { idx: 52, finger: 0, joint: 1, axes: ['y','z'] },
-    { idx: 53, finger: 0, joint: 2, axes: ['y']     },
-    { idx: 54, finger: 1, joint: 0, axes: ['x','y','z'] },
-    { idx: 55, finger: 1, joint: 1, axes: ['x']         },
-    { idx: 56, finger: 1, joint: 2, axes: ['x']         },
-    { idx: 57, finger: 2, joint: 0, axes: ['x','y','z'] },
-    { idx: 58, finger: 2, joint: 1, axes: ['x']         },
-    { idx: 59, finger: 2, joint: 2, axes: ['x']         },
-    { idx: 60, finger: 3, joint: 0, axes: ['x','y','z'] },
-    { idx: 61, finger: 3, joint: 1, axes: ['x']         },
-    { idx: 62, finger: 3, joint: 2, axes: ['x']         },
-    { idx: 63, finger: 4, joint: 0, axes: ['x','y','z'] },
-    { idx: 64, finger: 4, joint: 1, axes: ['x']         },
-    { idx: 65, finger: 4, joint: 2, axes: ['x']         },
-  ],
-};
-
-// Wrist + arm bones for "wrist" tab (group 5)
-const WRIST_BONES = {
-  right: [
-    { idx: 24, name: '右手首', axes: ['x','y','z'] },
-    { idx: 23, name: '右ひじ', axes: ['x','y','z'] },
-  ],
-  left: [
-    { idx: 47, name: '左手首', axes: ['x','y','z'] },
-    { idx: 46, name: '左ひじ', axes: ['x','y','z'] },
-  ],
-};
-
-const JOINT_NAMES = ['第1関節\n(付け根)', '第2関節', '第3関節\n(先端)'];
-const FINGER_NAMES = ['親指', '人差し指', '中指', '薬指', '小指', '手首/ひじ'];
-
-// Presets: [finger][joint][axis_index] = radians
-// Positive X = bend toward palm, Y = spread
-const PRESETS = {
-  open:  null, // reset = all 0
-  fist:  { bends: [0, 1.5, 1.5, 1.5, 1.5], spread: 0 },
-  point: { bends: [0, 0,   1.5, 1.5, 1.5], spread: 0 },
-  peace: { bends: [0, 0,   0,   1.5, 1.5], spread: 0 },
-  ok:    { bends: [1.2, 0, 1.5, 1.5, 1.5], spread: 0 },
-  pinch: { bends: [0.8, 0.6, 1.5, 1.5, 1.5], spread: 0 },
-  hold:  { bends: [0, 1.5, 1.5, 1.5, 0],   spread: 0 },
-  claw:  { bends: [0, 0.9, 0.9, 0.9, 0.9], spread: 0 },
-};
-
-// Materials to show in Hand mode (hide everything else)
-const HAND_MATERIAL_KEYWORDS_RIGHT = ['手', 'hand', 'skin', '肌'];
-const EAR_MATERIAL_KEYWORDS = ['頭', '顔', '肌', 'head', 'face', 'skin'];
-
-const toDeg = r => (r * 180 / Math.PI).toFixed(1) + '°';
-
-// ── App State ─────────────────────────────────────────────────────────────────
-let mmdMesh   = null;
-const fileMap = new Map();
-let currentMode  = 'hand';   // 'hand' | 'ear'
-let currentSide  = 'right';  // 'right' | 'left'
-let activeFingerGroup = 0;
-
-// ── THREE.js setup ────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+//  Three.js core
+// ═══════════════════════════════════════════════════════
 const canvas   = document.getElementById('webgl-canvas');
-const viewport = document.getElementById('viewport');
-
-const renderer = new THREE.WebGLRenderer({
-  canvas, antialias: true, preserveDrawingBuffer: true,
-});
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled   = true;
-renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
-renderer.outputColorSpace    = THREE.SRGBColorSpace;
-renderer.toneMapping         = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
+renderer.toneMapping       = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+renderer.outputColorSpace  = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0d1a2e);
-scene.fog = new THREE.FogExp2(0x0d1a2e, 0.018);
+scene.background = new THREE.Color(0x22223a);
+scene.fog = new THREE.Fog(0x22223a, 60, 120);
 
-const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 200);
-camera.position.set(0, 12, 8);
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 200);
+camera.position.set(0, 12, 38);
 
-// Lights
-scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-const keyL = new THREE.DirectionalLight(0xfff0e8, 1.4);
-keyL.position.set(4, 10, 6);
-keyL.castShadow = true;
-keyL.shadow.mapSize.set(2048, 2048);
-Object.assign(keyL.shadow.camera, { near: 0.1, far: 60, left: -8, right: 8, top: 8, bottom: -8 });
-keyL.shadow.intensity = 0.4;
-scene.add(keyL);
-scene.add(Object.assign(new THREE.DirectionalLight(0x8899cc, 0.4), { position: new THREE.Vector3(-4, 4, -8) }));
-scene.add(Object.assign(new THREE.DirectionalLight(0xffddcc, 0.3), { position: new THREE.Vector3(0, 2, -10) }));
-
-// Ground (subtle)
-const gnd = new THREE.Mesh(
-  new THREE.PlaneGeometry(40, 40),
-  new THREE.MeshStandardMaterial({ color: 0x0a1020, roughness: 1 })
-);
-gnd.rotation.x = -Math.PI / 2;
-gnd.receiveShadow = true;
-scene.add(gnd);
-scene.add(new THREE.GridHelper(20, 20, 0x1a2a3a, 0x0d1a2e));
-
-// Controls
-const controls = new OrbitControls(camera, renderer.domElement);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping  = true;
+controls.dampingFactor  = 0.10;
+controls.minDistance    = 5;
+controls.maxDistance    = 100;
 controls.target.set(0, 10, 0);
-controls.enableDamping = true;
-controls.dampingFactor = 0.08;
-controls.minDistance   = 0.5;
-controls.maxDistance   = 60;
-controls.update();
 
-// Resize
-function onResize() {
-  const w = viewport.clientWidth, h = viewport.clientHeight;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
-}
-window.addEventListener('resize', onResize);
-onResize();
+// ── Lighting ──────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0xfff8f0, 0.55));
 
-// Render loop
-(function animate() {
-  requestAnimationFrame(animate);
-  controls.update();
-  renderer.render(scene, camera);
-})();
+const keyLight = new THREE.DirectionalLight(0xfffaf0, 1.6);
+keyLight.position.set(10, 18, 14);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(1024, 1024);
+keyLight.shadow.camera.near = 5;
+keyLight.shadow.camera.far  = 80;
+keyLight.shadow.camera.left = keyLight.shadow.camera.bottom = -20;
+keyLight.shadow.camera.right = keyLight.shadow.camera.top  =  20;
+scene.add(keyLight);
 
+const fillLight = new THREE.DirectionalLight(0xc8d8ff, 0.55);
+fillLight.position.set(-10, 6, 10);
+scene.add(fillLight);
 
-// ════════════════════════════════════════════════════════════════════════════════
-// AUTO-LOAD — IndexedDB + File System Access API
-// ════════════════════════════════════════════════════════════════════════════════
-const _IDB = (() => {
-  const DB = 'MMP_HandViewer', VER = 1, STORE = 'handles';
-  const open = () => new Promise((res, rej) => {
-    const r = indexedDB.open(DB, VER);
-    r.onupgradeneeded = e => e.target.result.createObjectStore(STORE);
-    r.onsuccess = e => res(e.target.result);
-    r.onerror   = e => rej(e.target.error);
-  });
-  return {
-    save: async (key, val) => {
-      const db = await open();
-      return new Promise((res, rej) => {
-        const tx = db.transaction(STORE, 'readwrite');
-        tx.objectStore(STORE).put(val, key);
-        tx.oncomplete = res; tx.onerror = e => rej(e.target.error);
-      });
-    },
-    get: async (key) => {
-      const db = await open();
-      return new Promise((res, rej) => {
-        const tx  = db.transaction(STORE, 'readonly');
-        const req = tx.objectStore(STORE).get(key);
-        req.onsuccess = e => res(e.target.result ?? null);
-        req.onerror   = e => rej(e.target.error);
-      });
-    },
+const rimLight = new THREE.DirectionalLight(0xffddcc, 0.35);
+rimLight.position.set(0, -4, -14);
+scene.add(rimLight);
+
+// Ground for shadow reception
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(60, 60),
+  new THREE.ShadowMaterial({ opacity: 0.18 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -1;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ═══════════════════════════════════════════════════════
+//  State
+// ═══════════════════════════════════════════════════════
+let currentMode = 'hand';   // 'hand' | 'ear'
+let currentSide = 'right';  // 'right' | 'left'
+let currentFinger = 'thumb';
+
+let handRoot = null; // THREE.Group
+let earRoot  = null; // THREE.Group
+
+// Map: THREE.Mesh → joint THREE.Object3D (for raycasting)
+const meshToJoint = new Map();
+// Map: joint name → THREE.Object3D
+const jointObjects = {};
+
+// ── Joint angles (degrees) ────────────────────────────
+const FINGER_NAMES = ['index','middle','ring','pinky'];
+
+function defaultAngles() {
+  const a = {
+    thumb_cmc_open: 35,  // CMC abduction (0=closed, 80=open)
+    thumb_cmc_opp:  0,   // CMC opposition / rotation
+    thumb_mcp_flex: 0,
+    thumb_ip_flex:  0,
   };
-})();
-
-async function collectFilesFromDirHandle(dirHandle, out = []) {
-  for await (const [, entry] of dirHandle) {
-    if (entry.kind === 'file') out.push(await entry.getFile());
-    else if (entry.kind === 'directory') await collectFilesFromDirHandle(entry, out);
+  for (const n of FINGER_NAMES) {
+    a[`${n}_mcp_spread`] = 0;
+    a[`${n}_mcp_flex`]   = 0;
+    a[`${n}_pip_flex`]   = 0;
+    a[`${n}_dip_flex`]   = 0;
   }
-  return out;
+  return a;
+}
+let angles = defaultAngles();
+
+// ═══════════════════════════════════════════════════════
+//  Materials (helpers)
+// ═══════════════════════════════════════════════════════
+const mkSkin = () => new THREE.MeshStandardMaterial({
+  color: 0xf4c49a, roughness: 0.62, metalness: 0.03,
+});
+const mkKnuckle = () => new THREE.MeshStandardMaterial({
+  color: 0xdda07a, roughness: 0.78, metalness: 0.0,
+});
+const mkNail = () => new THREE.MeshStandardMaterial({
+  color: 0xffd6d8, roughness: 0.22, metalness: 0.18,
+});
+const mkRidge = () => new THREE.MeshStandardMaterial({
+  color: 0xe8a070, roughness: 0.72, metalness: 0.01,
+});
+
+// ═══════════════════════════════════════════════════════
+//  HAND MODEL BUILDER
+// ═══════════════════════════════════════════════════════
+// All dimensions in cm-like units (1 unit ≈ 1 cm).
+// Coordinate system (right hand, palm toward viewer):
+//   +Y = toward fingertips,  +X = toward pinky,  +Z = toward viewer (palm side)
+// Left hand = mirror via handRoot.scale.x = -1
+
+const DEG = THREE.MathUtils.degToRad;
+
+// Finger layout: [name, x, yBase, [proxLen, midLen, distLen], radius]
+const FINGER_DATA = [
+  ['index',  -2.2,  8.5,  [3.8, 2.8, 2.2],  0.70],
+  ['middle', -0.5,  8.8,  [4.2, 3.0, 2.4],  0.76],
+  ['ring',    1.2,  8.5,  [3.9, 2.8, 2.2],  0.68],
+  ['pinky',   2.8,  7.8,  [2.8, 2.0, 1.6],  0.56],
+];
+
+// Make a capsule mesh whose bottom sits at y=0, top at y=totalLen
+function mkCapsule(radius, totalLen, mat) {
+  const cylLen = Math.max(0.05, totalLen - 2 * radius);
+  const geo = new THREE.CapsuleGeometry(radius, cylLen, 4, 12);
+  const m = new THREE.Mesh(geo, mat);
+  m.castShadow = true;
+  m.position.y = totalLen / 2;
+  return m;
+}
+function mkSphere(r, mat) {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 10), mat);
+  m.castShadow = true;
+  return m;
+}
+function mkNailMesh(r, distLen) {
+  // Small flat box on dorsal side of distal phalanx
+  const geo = new THREE.BoxGeometry(r * 1.55, 0.07, distLen * 0.58);
+  const m = new THREE.Mesh(geo, mkNail());
+  m.position.set(0, distLen * 0.42, -r * 0.90);
+  return m;
 }
 
-async function tryAutoLoad() {
-  if (!window.FileSystemDirectoryHandle) return;
-  let handle;
-  try { handle = await _IDB.get('model-dir'); } catch { return; }
-  if (!handle) return;
-  let perm;
-  try { perm = await handle.queryPermission({ mode: 'read' }); } catch { return; }
-  if (perm === 'granted') { autoLoadDirHandle(handle); return; }
-  const btn  = document.getElementById('ov-autoload-btn');
-  const hint = document.getElementById('ov-autoload-hint');
-  btn.textContent = `↩ 「${handle.name}」を再読み込み`;
-  btn.style.display = '';
-  hint.textContent  = '前回使用したフォルダを一発読み込み';
-  hint.style.display = '';
-  btn.onclick = async () => {
-    btn.disabled = true;
-    const newPerm = await handle.requestPermission({ mode: 'read' }).catch(() => 'denied');
-    if (newPerm === 'granted') { await autoLoadDirHandle(handle); }
-    else { hint.textContent = '許可が必要です。手動でフォルダを選択してください。'; }
-    btn.disabled = false;
-  };
+function addJointMesh(parent, mesh, jointObj) {
+  parent.add(mesh);
+  meshToJoint.set(mesh, jointObj);
 }
 
-async function autoLoadDirHandle(dirHandle) {
-  showOverlayLoading(`「${dirHandle.name}」を読み込み中...`);
-  const files = await collectFilesFromDirHandle(dirHandle);
-  await ingestFiles(files);
+function buildHand() {
+  if (handRoot) { scene.remove(handRoot); handRoot = null; }
+  meshToJoint.clear();
+  Object.keys(jointObjects).forEach(k => delete jointObjects[k]);
+
+  handRoot = new THREE.Group();
+  handRoot.receiveShadow = true;
+
+  const skin = mkSkin();
+  const knuckle = mkKnuckle();
+
+  // ── Forearm stub ──────────────────────────────────────
+  const forearm = mkCapsule(1.45, 4.0, skin);
+  forearm.position.set(0, -2, 0);
+  handRoot.add(forearm);
+
+  // ── Palm ─────────────────────────────────────────────
+  // Tapered box: wider at knuckles (y=8.5), narrower at wrist (y=0)
+  const palmGeo = new THREE.BoxGeometry(7.4, 8.5, 1.55, 3, 6, 2);
+  const palmPos = palmGeo.attributes.position;
+  for (let i = 0; i < palmPos.count; i++) {
+    const yn = (palmPos.getY(i) + 4.25) / 8.5; // 0=wrist, 1=knuckles
+    palmPos.setX(i, palmPos.getX(i) * (0.72 + 0.28 * yn));
+    // Slightly arch the back-of-hand
+    const xn = palmPos.getX(i) / 3.7;
+    palmPos.setZ(i, palmPos.getZ(i) - Math.abs(xn) * 0.12);
+  }
+  palmGeo.computeVertexNormals();
+  const palmMesh = new THREE.Mesh(palmGeo, skin);
+  palmMesh.position.y = 4.25;
+  palmMesh.castShadow = true;
+  palmMesh.receiveShadow = true;
+  handRoot.add(palmMesh);
+
+  // ── Four fingers ──────────────────────────────────────
+  for (const [name, x, yBase, lens, r] of FINGER_DATA) {
+    // MCP joint (knuckle)
+    const mcp = new THREE.Object3D(); mcp.name = `${name}_mcp`;
+    mcp.position.set(x, yBase, 0);
+    handRoot.add(mcp);
+    jointObjects[`${name}_mcp`] = mcp;
+
+    const kMesh = mkSphere(r * 1.06, knuckle);
+    addJointMesh(mcp, kMesh, mcp);
+    const prox = mkCapsule(r, lens[0], skin);
+    addJointMesh(mcp, prox, mcp);
+
+    // PIP joint
+    const pip = new THREE.Object3D(); pip.name = `${name}_pip`;
+    pip.position.y = lens[0];
+    mcp.add(pip);
+    jointObjects[`${name}_pip`] = pip;
+
+    addJointMesh(pip, mkSphere(r * 0.93, knuckle), pip);
+    addJointMesh(pip, mkCapsule(r * 0.92, lens[1], skin), pip);
+
+    // DIP joint
+    const dip = new THREE.Object3D(); dip.name = `${name}_dip`;
+    dip.position.y = lens[1];
+    pip.add(dip);
+    jointObjects[`${name}_dip`] = dip;
+
+    addJointMesh(dip, mkSphere(r * 0.83, knuckle), dip);
+    const distMesh = mkCapsule(r * 0.82, lens[2], skin);
+    addJointMesh(dip, distMesh, dip);
+
+    // Fingertip
+    const tip = mkSphere(r * 0.73, skin);
+    tip.position.y = lens[2];
+    addJointMesh(dip, tip, dip);
+
+    // Nail
+    dip.add(mkNailMesh(r * 0.82, lens[2]));
+  }
+
+  // ── Thumb ─────────────────────────────────────────────
+  // CMC: attached at lateral palm, angles applied by applyAngles()
+  const thumbCMC = new THREE.Object3D(); thumbCMC.name = 'thumb_cmc';
+  thumbCMC.position.set(-3.75, 2.6, 0.25);
+  handRoot.add(thumbCMC);
+  jointObjects['thumb_cmc'] = thumbCMC;
+
+  // Knuckle ball at thumb base
+  const cmcBall = mkSphere(0.98, knuckle);
+  addJointMesh(thumbCMC, cmcBall, thumbCMC);
+  addJointMesh(thumbCMC, mkCapsule(0.90, 3.2, skin), thumbCMC);
+
+  const thumbMCP = new THREE.Object3D(); thumbMCP.name = 'thumb_mcp';
+  thumbMCP.position.y = 3.2;
+  thumbCMC.add(thumbMCP);
+  jointObjects['thumb_mcp'] = thumbMCP;
+
+  addJointMesh(thumbMCP, mkSphere(0.86, knuckle), thumbMCP);
+  addJointMesh(thumbMCP, mkCapsule(0.82, 2.8, skin), thumbMCP);
+
+  const thumbIP = new THREE.Object3D(); thumbIP.name = 'thumb_ip';
+  thumbIP.position.y = 2.8;
+  thumbMCP.add(thumbIP);
+  jointObjects['thumb_ip'] = thumbIP;
+
+  addJointMesh(thumbIP, mkSphere(0.76, knuckle), thumbIP);
+  const thumbDist = mkCapsule(0.74, 2.2, skin);
+  addJointMesh(thumbIP, thumbDist, thumbIP);
+
+  const thumbTip = mkSphere(0.64, skin);
+  thumbTip.position.y = 2.2;
+  addJointMesh(thumbIP, thumbTip, thumbIP);
+  thumbIP.add(mkNailMesh(0.74, 2.2));
+
+  // Mirror for left hand
+  handRoot.scale.x = currentSide === 'left' ? -1 : 1;
+
+  scene.add(handRoot);
+  applyAngles();
 }
 
+// ── Apply joint angles from `angles` state ────────────
+function applyAngles() {
+  if (!handRoot) return;
 
-// ════════════════════════════════════════════════════════════════════════════════
-// FILE LOADING
-// ════════════════════════════════════════════════════════════════════════════════
-async function imgBlobToPngUrl(blob) {
-  return new Promise(resolve => {
-    const url = URL.createObjectURL(blob);
-    const img = new Image();
-    img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth; c.height = img.naturalHeight;
-      c.getContext('2d').drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      c.toBlob(png => resolve(URL.createObjectURL(png)), 'image/png');
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve(URL.createObjectURL(blob)); };
-    img.src = url;
+  for (const [name] of FINGER_DATA) {
+    const mcp = jointObjects[`${name}_mcp`];
+    const pip = jointObjects[`${name}_pip`];
+    const dip = jointObjects[`${name}_dip`];
+    if (!mcp || !pip || !dip) continue;
+
+    const flex   = angles[`${name}_mcp_flex`]   || 0;
+    const spread = angles[`${name}_mcp_spread`]  || 0;
+    const pipF   = angles[`${name}_pip_flex`]    || 0;
+    const dipF   = angles[`${name}_dip_flex`]    || 0;
+
+    mcp.rotation.set(DEG(spread), 0, -DEG(flex));
+    pip.rotation.set(0, 0, -DEG(pipF));
+    dip.rotation.set(0, 0, -DEG(dipF));
+  }
+
+  // Thumb: CMC controls base orientation + abduction/opposition
+  const cmc = jointObjects['thumb_cmc'];
+  const mcp = jointObjects['thumb_mcp'];
+  const ip  = jointObjects['thumb_ip'];
+  if (cmc && mcp && ip) {
+    const open  = angles.thumb_cmc_open  || 0;   // abduction 0-80°
+    const opp   = angles.thumb_cmc_opp   || 0;   // opposition 0-70°
+    const mcpF  = angles.thumb_mcp_flex  || 0;
+    const ipF   = angles.thumb_ip_flex   || 0;
+
+    // Base pose: thumb spreads laterally+downward; open increases this
+    // rotation.z = 90+open° makes the thumb's +Y point lower-laterally
+    cmc.rotation.order = 'YZX';
+    cmc.rotation.z = DEG(90 + open * 0.5);    // lateral abduction
+    cmc.rotation.x = DEG(-18 - opp * 0.5);    // palmar abduction / opposition
+    cmc.rotation.y = DEG(-opp * 0.6);         // axial rotation for opposition
+
+    mcp.rotation.set(0, 0, -DEG(mcpF));
+    ip.rotation.set( 0, 0, -DEG(ipF));
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  EAR MODEL BUILDER
+// ═══════════════════════════════════════════════════════
+// Right ear viewed from outside (lateral). Coordinate center ≈ center of ear.
+// Mirror X for left ear.
+
+function buildEar() {
+  if (earRoot) { scene.remove(earRoot); earRoot = null; }
+
+  earRoot = new THREE.Group();
+
+  const skin   = new THREE.MeshStandardMaterial({ color: 0xf0c08a, roughness: 0.66, metalness: 0.02, side: THREE.FrontSide });
+  const ridge  = mkRidge();
+  const cavity = new THREE.MeshStandardMaterial({ color: 0xc8885a, roughness: 0.82, metalness: 0.0 });
+
+  // ── 1. Main ear base (extruded 2D shape) ────────────
+  const earShape = new THREE.Shape();
+  // Outer ear outline – clockwise from top
+  earShape.moveTo(0.6, 3.2);
+  earShape.bezierCurveTo( 1.8, 2.8,  2.2, 1.5,  2.2,  0.3);
+  earShape.bezierCurveTo( 2.3,-0.8,  2.1,-1.8,  1.7, -2.4);
+  earShape.bezierCurveTo( 1.3,-3.0,  0.7,-3.4,  0.1, -3.5);
+  earShape.bezierCurveTo(-0.5,-3.6, -0.9,-3.3, -0.7, -2.8);
+  earShape.bezierCurveTo(-0.5,-2.4, -1.2,-2.0, -1.5, -1.2);
+  earShape.bezierCurveTo(-1.7,-0.4, -1.8, 0.4, -1.7,  1.2);
+  earShape.bezierCurveTo(-1.6, 2.0, -1.3, 2.8, -0.6,  3.3);
+  earShape.bezierCurveTo( 0.0, 3.6,  0.4, 3.4,  0.6,  3.2);
+
+  const earBaseGeo = new THREE.ExtrudeGeometry(earShape, {
+    depth: 0.5, bevelEnabled: true,
+    bevelThickness: 0.18, bevelSize: 0.14, bevelSegments: 3,
   });
+  earBaseGeo.translate(0, 0, -0.25);
+  const earBase = new THREE.Mesh(earBaseGeo, skin);
+  earBase.castShadow = true;
+  earBase.receiveShadow = true;
+  earRoot.add(earBase);
+
+  // ── 2. Helix rim (outer rolled edge) ─────────────────
+  const helixPts = [
+    [0.2, -2.9, 0.10],
+    [0.8, -2.4, 0.25],
+    [1.4, -1.6, 0.38],
+    [1.8, -0.5, 0.52],
+    [2.0,  0.6, 0.62],
+    [1.9,  1.7, 0.68],
+    [1.5,  2.6, 0.65],
+    [0.6,  3.2, 0.58],
+    [-0.3, 3.4, 0.46],
+    [-1.0, 2.8, 0.34],
+    [-1.5, 1.8, 0.24],
+    [-1.6, 0.6, 0.18],
+    [-1.5,-0.5, 0.14],
+    [-1.1,-1.5, 0.10],
+  ].map(p => new THREE.Vector3(...p));
+
+  const helixCurve = new THREE.CatmullRomCurve3(helixPts, false, 'catmullrom', 0.5);
+  earRoot.add(new THREE.Mesh(
+    new THREE.TubeGeometry(helixCurve, 48, 0.24, 8, false), ridge
+  ));
+
+  // ── 3. Antihelix – main stem ──────────────────────────
+  const ahMain = [
+    [ 0.1,-1.2, 0.60],
+    [ 0.1,-0.3, 0.72],
+    [ 0.1, 0.7, 0.80],
+    [ 0.1, 1.5, 0.78],  // fork
+  ].map(p => new THREE.Vector3(...p));
+  earRoot.add(new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ahMain), 20, 0.20, 7, false), ridge
+  ));
+
+  // Antihelix superior crus (upper branch of Y)
+  const ahSup = [
+    [0.1, 1.5, 0.78],
+    [0.5, 2.2, 0.70],
+    [1.0, 2.8, 0.58],
+  ].map(p => new THREE.Vector3(...p));
+  earRoot.add(new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ahSup), 14, 0.16, 7, false), ridge
+  ));
+
+  // Antihelix inferior crus (lower branch of Y)
+  const ahInf = [
+    [0.1, 1.5, 0.78],
+    [0.7, 1.2, 0.72],
+    [1.3, 0.8, 0.60],
+  ].map(p => new THREE.Vector3(...p));
+  earRoot.add(new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ahInf), 12, 0.15, 7, false), ridge
+  ));
+
+  // ── 4. Concha (central cavity bowl) ──────────────────
+  // A partial torus ring to suggest the bowl opening
+  const conchaGeo = new THREE.TorusGeometry(0.85, 0.20, 8, 24, Math.PI * 1.6);
+  const concha = new THREE.Mesh(conchaGeo, cavity);
+  concha.position.set(0.15, -0.2, 0.70);
+  concha.rotation.z = -0.4;
+  earRoot.add(concha);
+
+  // Ear canal opening (dark disc)
+  const canalGeo = new THREE.CircleGeometry(0.38, 14);
+  const canalMat = new THREE.MeshStandardMaterial({ color: 0x5a3018, roughness: 1.0, metalness: 0.0 });
+  const canal = new THREE.Mesh(canalGeo, canalMat);
+  canal.position.set(0.15, -0.2, 0.74);
+  earRoot.add(canal);
+
+  // ── 5. Tragus (small flap over ear canal) ────────────
+  const tragusGeo = new THREE.SphereGeometry(0.38, 8, 8);
+  tragusGeo.scale(1.6, 1.1, 0.75);
+  const tragus = new THREE.Mesh(tragusGeo, skin);
+  tragus.position.set(0.55, -1.55, 0.68);
+  tragus.castShadow = true;
+  earRoot.add(tragus);
+
+  // ── 6. Antitragus ─────────────────────────────────────
+  const atGeo = new THREE.SphereGeometry(0.30, 8, 8);
+  atGeo.scale(1.3, 0.9, 0.75);
+  const antitragus = new THREE.Mesh(atGeo, skin);
+  antitragus.position.set(-0.45, -1.80, 0.68);
+  earRoot.add(antitragus);
+
+  // ── 7. Intertragic notch line ─────────────────────────
+  const notchPts = [
+    new THREE.Vector3( 0.45,-1.90, 0.65),
+    new THREE.Vector3( 0.05,-1.95, 0.70),
+    new THREE.Vector3(-0.35,-1.88, 0.65),
+  ];
+  earRoot.add(new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(notchPts), 8, 0.07, 5, false),
+    cavity
+  ));
+
+  // ── 8. Earlobe ────────────────────────────────────────
+  const earlobeGeo = new THREE.SphereGeometry(1.05, 14, 14);
+  earlobeGeo.scale(0.95, 0.82, 0.55);
+  const earlobe = new THREE.Mesh(earlobeGeo, skin);
+  earlobe.position.set(0.05, -2.9, 0.15);
+  earlobe.castShadow = true;
+  earRoot.add(earlobe);
+
+  // Mirror for left ear
+  earRoot.scale.x = currentSide === 'left' ? -1 : 1;
+
+  earRoot.visible = false; // hidden by default (hand shown first)
+  scene.add(earRoot);
+  updateEarLabels();
 }
 
-async function ingestFiles(fileList) {
-  showOverlayLoading('ファイルを準備中...');
-  for (const url of fileMap.values()) URL.revokeObjectURL(url);
-  fileMap.clear();
-
-  const files  = Array.from(fileList);
-  const pmxFile = files.find(f => f.name.toLowerCase().endsWith('.pmx'));
-  if (!pmxFile) {
-    showOverlayError('.pmx ファイルが見つかりませんでした。\nモデルフォルダ全体を選択してください。');
-    return;
-  }
-  await Promise.all(files.map(async file => {
-    const key = file.name.toLowerCase();
-    const ext = key.split('.').pop();
-    if (ext === 'bmp' || ext === 'spa' || ext === 'sph') {
-      fileMap.set(key, await imgBlobToPngUrl(file));
-    } else {
-      fileMap.set(key, URL.createObjectURL(file));
-    }
-  }));
-  loadModel(fileMap.get(pmxFile.name.toLowerCase()));
-}
-
-const PMX_VIRTUAL = 'model.pmx';
-
-function loadModel(pmxBlobUrl) {
-  showOverlayLoading('モデルを読み込み中...');
-  const manager = new THREE.LoadingManager();
-  manager.setURLModifier(url => {
-    if (url === PMX_VIRTUAL) return pmxBlobUrl;
-    const bare = url.replace(/\\/g, '/').split('/').pop().toLowerCase();
-    if (fileMap.has(bare)) return fileMap.get(bare);
-    return url;
-  });
-
-  if (mmdMesh) {
-    scene.remove(mmdMesh);
-    mmdMesh.geometry?.dispose();
-    const ms = Array.isArray(mmdMesh.material) ? mmdMesh.material : [mmdMesh.material];
-    ms.forEach(m => { m.map?.dispose(); m.dispose(); });
-    mmdMesh = null;
-  }
-
-  new MMDLoader(manager).load(PMX_VIRTUAL, mesh => {
-    mmdMesh = mesh;
-    mesh.castShadow = mesh.receiveShadow = true;
-    scene.add(mesh);
-    applyMode(currentMode);
-    buildSliders();
-    hideOverlay();
-  },
-  xhr => {
-    if (xhr.total > 0) showOverlayLoading(`読み込み中… ${Math.round(xhr.loaded/xhr.total*100)}%`);
-  },
-  err => {
-    console.error('[MMDLoader]', err);
-    showOverlayError('ロードに失敗しました:\n' + (err?.message ?? String(err)));
-  });
-}
-
-
-// ════════════════════════════════════════════════════════════════════════════════
-// MODE MANAGEMENT
-// ════════════════════════════════════════════════════════════════════════════════
-
-// Camera presets for each mode
-const CAM_PRESETS = {
-  hand_right: { target: [0, 8.5, 0], pos: [0, 9, 6],  fov: 35 },
-  hand_left:  { target: [0, 8.5, 0], pos: [0, 9, 6],  fov: 35 },
-  ear_right:  { target: [1.5, 17, 0], pos: [6, 17, 2], fov: 30 },
-  ear_left:   { target: [-1.5, 17, 0], pos: [-6, 17, 2], fov: 30 },
-};
-
-function applyMode(mode) {
-  currentMode = mode;
-  if (!mmdMesh) return;
-
-  const mats    = Array.isArray(mmdMesh.material) ? mmdMesh.material : [mmdMesh.material];
-  const mmdMats = mmdMesh.userData?.MMD?.materials ?? [];
-
-  if (mode === 'hand') {
-    // Show all materials (let the user see the full Miku in hand close-up)
-    // — or optionally show only hand/skin materials
-    mats.forEach(m => { m.visible = true; });
-
-    // Camera close-up on hands
-    const cp = CAM_PRESETS[`hand_${currentSide}`];
-    camera.fov = cp.fov;
-    camera.updateProjectionMatrix();
-    animateCameraTo(cp.pos, cp.target, 0.8);
-
-    document.getElementById('bottom-panel').style.display = 'flex';
-    document.getElementById('ear-labels').style.display   = 'none';
-
-  } else if (mode === 'ear') {
-    // Show head/face materials
-    mats.forEach((m, i) => {
-      const name = (mmdMats[i]?.name ?? '').toLowerCase();
-      m.visible = EAR_MATERIAL_KEYWORDS.some(k => name.includes(k)) ||
-                  name === '' || i < 5; // show first few if unknown
-    });
-
-    // Camera to ear
-    const cp = CAM_PRESETS[`ear_${currentSide}`];
-    camera.fov = cp.fov;
-    camera.updateProjectionMatrix();
-    animateCameraTo(cp.pos, cp.target, 0.8);
-
-    document.getElementById('bottom-panel').style.display = 'none';
-    document.getElementById('ear-labels').style.display   = 'block';
-    buildEarLabels();
-  }
-
-  // Update toolbar buttons
-  document.getElementById('mode-hand-btn').classList.toggle('active', mode === 'hand');
-  document.getElementById('mode-ear-btn').classList.toggle('active', mode === 'ear');
-}
-
-function animateCameraTo(pos, target, dur = 0.8) {
+// ═══════════════════════════════════════════════════════
+//  Camera animation helpers
+// ═══════════════════════════════════════════════════════
+let camAnim = null;
+function animateCamTo(toPos, toTarget, dur = 0.7) {
   const sp = camera.position.clone();
   const st = controls.target.clone();
-  const ep = new THREE.Vector3(...pos);
-  const et = new THREE.Vector3(...target);
+  const ep = new THREE.Vector3(...toPos);
+  const et = new THREE.Vector3(...toTarget);
   const t0 = performance.now();
-  (function step() {
-    const t = Math.min((performance.now() - t0) / 1000 / dur, 1);
-    const e = t < 0.5 ? 2*t*t : -1 + (4-2*t)*t;
-    camera.position.lerpVectors(sp, ep, e);
-    controls.target.lerpVectors(st, et, e);
-    controls.update();
-    if (t < 1) requestAnimationFrame(step);
-  })();
+  camAnim = t => {
+    const e = Math.min((t - t0) / (dur * 1000), 1);
+    const s = e < 0.5 ? 2*e*e : -1+2*(2-e)*e; // ease in-out
+    camera.position.lerpVectors(sp, ep, s);
+    controls.target.lerpVectors(st, et, s);
+    return e >= 1;
+  };
 }
 
-function buildEarLabels() {
-  const container = document.getElementById('ear-labels');
-  container.innerHTML = '';
-  if (!mmdMesh) return;
+const CAM = {
+  hand: { pos: [0, 12, 38], target: [0, 10, 0] },
+  ear:  { pos: [0,  0, 22], target: [0,  0, 0] },
+};
 
-  // Approximate ear anatomy label positions (as % of viewport, rough offsets)
-  const labels = [
-    { text: '耳輪 (Helix)',         x: 55, y: 32 },
-    { text: '対輪 (Antihelix)',     x: 48, y: 45 },
-    { text: '耳珠 (Tragus)',        x: 44, y: 58 },
-    { text: '対耳珠 (Antitragus)', x: 50, y: 64 },
-    { text: '耳垂 (Earlobe)',       x: 52, y: 74 },
-    { text: '耳甲介 (Concha)',      x: 46, y: 52 },
-  ];
-  labels.forEach(l => {
+// ═══════════════════════════════════════════════════════
+//  Mode switching
+// ═══════════════════════════════════════════════════════
+function showMode(mode) {
+  currentMode = mode;
+  document.getElementById('btn-hand').classList.toggle('active', mode === 'hand');
+  document.getElementById('btn-ear' ).classList.toggle('active', mode === 'ear');
+  document.getElementById('bottom-panel').style.display = mode === 'hand' ? 'flex' : 'none';
+  document.getElementById('ear-labels' ).style.display  = mode === 'ear'  ? 'block': 'none';
+
+  if (handRoot) handRoot.visible = mode === 'hand';
+  if (earRoot ) earRoot.visible  = mode === 'ear';
+
+  const c = CAM[mode];
+  animateCamTo(c.pos, c.target);
+}
+
+function updateSide() {
+  const lbl = currentSide === 'right' ? '右' : '左';
+  document.getElementById('btn-side').textContent = lbl;
+  if (handRoot) handRoot.scale.x = currentSide === 'left' ? -1 : 1;
+  if (earRoot ) earRoot.scale.x  = currentSide === 'left' ? -1 : 1;
+}
+
+// ═══════════════════════════════════════════════════════
+//  Ear anatomy labels
+// ═══════════════════════════════════════════════════════
+const EAR_LABEL_DEFS = [
+  { text: 'ヘリックス',  pos: [1.9,  1.2, 0.62] },
+  { text: '対耳輪',      pos: [0.1,  0.7, 0.82] },
+  { text: '耳甲介',      pos: [0.15,-0.2, 0.74] },
+  { text: '耳珠',        pos: [0.55,-1.55,0.70] },
+  { text: '対耳珠',      pos: [-0.45,-1.80,0.70] },
+  { text: '耳垂',        pos: [0.05,-2.9, 0.20] },
+];
+
+function updateEarLabels() {
+  const div = document.getElementById('ear-labels');
+  div.innerHTML = '';
+  EAR_LABEL_DEFS.forEach(({ text, pos }) => {
     const el = document.createElement('div');
     el.className = 'ear-label';
-    el.textContent = l.text;
-    el.style.left = l.x + '%';
-    el.style.top  = l.y + '%';
-    container.appendChild(el);
+    el.textContent = text;
+    el.dataset.px = pos[0]; el.dataset.py = pos[1]; el.dataset.pz = pos[2];
+    div.appendChild(el);
   });
 }
 
-
-// ════════════════════════════════════════════════════════════════════════════════
-// FINGER SLIDERS
-// ════════════════════════════════════════════════════════════════════════════════
-
-// Stores all slider elements keyed by boneIdx+axis
-const sliderMap = new Map(); // `${boneIdx}-${axis}` → { slider, valEl }
-
-function buildSliders() {
-  sliderMap.clear();
-  renderFingerSliders(activeFingerGroup);
+function refreshEarLabelPositions() {
+  if (currentMode !== 'ear') return;
+  const vp = document.getElementById('viewport');
+  const W = vp.clientWidth, H = vp.clientHeight;
+  document.querySelectorAll('.ear-label').forEach(el => {
+    let px = parseFloat(el.dataset.px);
+    const py = parseFloat(el.dataset.py);
+    const pz = parseFloat(el.dataset.pz);
+    if (earRoot) px *= earRoot.scale.x; // mirror
+    const v = new THREE.Vector3(px, py, pz).project(camera);
+    const sx = (v.x + 1) / 2 * W;
+    const sy = (-v.y + 1) / 2 * H;
+    if (v.z < 1) {
+      el.style.left   = `${sx + 8}px`;
+      el.style.top    = `${sy - 10}px`;
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  });
 }
 
-function renderFingerSliders(fingerGroup) {
-  activeFingerGroup = fingerGroup;
-  const container   = document.getElementById('joint-sliders');
-  container.innerHTML = '';
+// ═══════════════════════════════════════════════════════
+//  Slider UI
+// ═══════════════════════════════════════════════════════
+const THUMB_SLIDERS = [
+  { key: 'thumb_cmc_open', label: '開く/閉じる', min:  0, max: 80  },
+  { key: 'thumb_cmc_opp',  label: '対立',         min:  0, max: 70  },
+  { key: 'thumb_mcp_flex', label: '付け根を曲げ', min:  0, max: 60  },
+  { key: 'thumb_ip_flex',  label: '先端を曲げ',   min:  0, max: 80  },
+];
+const FINGER_SLIDERS = [
+  { key: '_mcp_spread', label: '横開き',       min: -25, max: 25  },
+  { key: '_mcp_flex',   label: '付け根を曲げ', min:   0, max: 90  },
+  { key: '_pip_flex',   label: '第1関節',       min:   0, max: 110 },
+  { key: '_dip_flex',   label: '第2関節',       min:   0, max: 90  },
+];
 
-  if (!mmdMesh) return;
+function buildSliders(finger) {
+  const area = document.getElementById('slider-area');
+  area.innerHTML = '';
+  const defs = finger === 'thumb'
+    ? THUMB_SLIDERS
+    : FINGER_SLIDERS.map(d => ({ ...d, key: finger + d.key }));
 
-  const bones    = mmdMesh.skeleton.bones;
-  const mmdBones = mmdMesh.userData?.MMD?.bones ?? [];
-
-  if (fingerGroup === 5) {
-    // Wrist / elbow tab
-    const wbones = WRIST_BONES[currentSide];
-    wbones.forEach(info => {
-      const col  = document.createElement('div');
-      col.className = 'joint-col';
-      const lbl = document.createElement('div');
-      lbl.className = 'joint-label';
-      lbl.textContent = info.name;
-      col.appendChild(lbl);
-
-      const bone = bones[info.idx];
-      if (!bone) { container.appendChild(col); return; }
-
-      info.axes.forEach(axis => {
-        col.appendChild(makeSliderRow(info.idx, bone, axis));
-      });
-      container.appendChild(col);
+  defs.forEach(({ key, label, min, max }) => {
+    const row = document.createElement('div');
+    row.className = 'slider-row';
+    const val = angles[key] ?? 0;
+    row.innerHTML = `
+      <span class="slider-label">${label}</span>
+      <input type="range" class="slider-range" data-key="${key}" min="${min}" max="${max}" step="1" value="${val}">
+      <span class="slider-val">${Math.round(val)}°</span>`;
+    area.appendChild(row);
+    row.querySelector('input').addEventListener('input', e => {
+      const v = parseFloat(e.target.value);
+      angles[key] = v;
+      e.target.nextElementSibling.textContent = `${Math.round(v)}°`;
+      applyAngles();
     });
-    return;
-  }
-
-  // Finger joints 0-2
-  const fingerBones = FINGER_BONES[currentSide].filter(b => b.finger === fingerGroup);
-  // Group by joint
-  const byJoint = [0, 1, 2].map(j => fingerBones.filter(b => b.joint === j));
-
-  byJoint.forEach((joints, ji) => {
-    if (!joints.length) return;
-    const col = document.createElement('div');
-    col.className = 'joint-col';
-    const lbl = document.createElement('div');
-    lbl.className = 'joint-label';
-    lbl.textContent = JOINT_NAMES[ji];
-    col.appendChild(lbl);
-
-    joints.forEach(info => {
-      const bone = bones[info.idx];
-      if (!bone) return;
-      info.axes.forEach(axis => {
-        col.appendChild(makeSliderRow(info.idx, bone, axis));
-      });
-    });
-    container.appendChild(col);
   });
 }
 
-function makeSliderRow(boneIdx, bone, axis) {
-  const row  = document.createElement('div');
-  row.className = 'axis-row';
-
-  const lbl  = document.createElement('span');
-  lbl.className = 'ax-lbl';
-  lbl.textContent = axis.toUpperCase();
-
-  const slider = document.createElement('input');
-  slider.type  = 'range';
-  slider.min   = -Math.PI;
-  slider.max   =  Math.PI;
-  slider.step  = 0.005;
-  slider.value = bone.rotation[axis];
-
-  const valEl = document.createElement('span');
-  valEl.className = 'ax-val';
-  valEl.textContent = toDeg(bone.rotation[axis]);
-
-  slider.addEventListener('input', () => {
-    bone.rotation[axis] = parseFloat(slider.value);
-    valEl.textContent   = toDeg(bone.rotation[axis]);
-    mmdMesh?.skeleton.update();
-  });
-
-  const key = `${boneIdx}-${axis}`;
-  sliderMap.set(key, { slider, valEl });
-
-  row.append(lbl, slider, valEl);
-  return row;
-}
-
-function syncSlidersForCurrentFinger() {
-  if (!mmdMesh) return;
-  sliderMap.forEach(({ slider, valEl }, key) => {
-    const [boneIdxStr, axis] = key.split('-');
-    const bone = mmdMesh.skeleton.bones[+boneIdxStr];
-    if (!bone) return;
-    const v = bone.rotation[axis];
-    slider.value = v;
-    valEl.textContent = toDeg(v);
+function syncSliders() {
+  document.querySelectorAll('.slider-range').forEach(el => {
+    const key = el.dataset.key;
+    const v = angles[key] ?? 0;
+    el.value = v;
+    el.nextElementSibling.textContent = `${Math.round(v)}°`;
   });
 }
 
+// ═══════════════════════════════════════════════════════
+//  Preset poses
+// ═══════════════════════════════════════════════════════
+const PRESETS = {
+  open: () => defaultAngles(),
 
-// ════════════════════════════════════════════════════════════════════════════════
-// PRESET POSES
-// ════════════════════════════════════════════════════════════════════════════════
+  fist: () => {
+    const a = defaultAngles();
+    a.thumb_cmc_open = 22; a.thumb_cmc_opp = 40;
+    a.thumb_mcp_flex = 50; a.thumb_ip_flex = 38;
+    for (const n of FINGER_NAMES) {
+      a[`${n}_mcp_flex`] = 80; a[`${n}_pip_flex`] = 98; a[`${n}_dip_flex`] = 70;
+    }
+    return a;
+  },
+
+  point: () => {
+    const a = PRESETS.fist();
+    a.index_mcp_flex = 0; a.index_pip_flex = 0; a.index_dip_flex = 0;
+    a.index_mcp_spread = 0;
+    a.thumb_cmc_open = 28; a.thumb_cmc_opp = 30; a.thumb_mcp_flex = 30; a.thumb_ip_flex = 20;
+    return a;
+  },
+
+  peace: () => {
+    const a = PRESETS.fist();
+    a.index_mcp_flex = 0;  a.index_pip_flex = 0;  a.index_dip_flex = 0;
+    a.middle_mcp_flex = 0; a.middle_pip_flex = 0; a.middle_dip_flex = 0;
+    a.index_mcp_spread  = -12;
+    a.middle_mcp_spread =  12;
+    a.thumb_cmc_open = 30; a.thumb_mcp_flex = 20; a.thumb_ip_flex = 10;
+    return a;
+  },
+
+  ok: () => {
+    const a = defaultAngles();
+    a.thumb_cmc_open = 20; a.thumb_cmc_opp = 50;
+    a.thumb_mcp_flex = 30; a.thumb_ip_flex = 55;
+    a.index_mcp_flex = 20; a.index_pip_flex = 80; a.index_dip_flex = 55;
+    return a;
+  },
+
+  pinch: () => {
+    const a = defaultAngles();
+    a.thumb_cmc_open = 18; a.thumb_cmc_opp = 45;
+    a.thumb_mcp_flex = 20; a.thumb_ip_flex = 40;
+    a.index_mcp_flex = 15; a.index_pip_flex = 45; a.index_dip_flex = 30;
+    a.middle_mcp_flex = 5; a.ring_mcp_flex = 5; a.pinky_mcp_flex = 5;
+    return a;
+  },
+
+  rock: () => {
+    const a = PRESETS.fist();
+    a.index_mcp_flex = 0;  a.index_pip_flex = 0;  a.index_dip_flex = 0;
+    a.pinky_mcp_flex = 0;  a.pinky_pip_flex = 0;  a.pinky_dip_flex = 0;
+    a.index_mcp_spread = -10; a.pinky_mcp_spread = 10;
+    return a;
+  },
+};
 
 function applyPreset(name) {
-  if (!mmdMesh) return;
-  const bones = mmdMesh.skeleton.bones;
-  const p     = PRESETS[name];
-
-  // Get the right/left bone list
-  const fingerBoneList = FINGER_BONES[currentSide];
-
-  if (!p) {
-    // Reset all finger bones
-    fingerBoneList.forEach(({ idx }) => {
-      const b = bones[idx];
-      if (b) b.rotation.set(0, 0, 0);
-    });
-  } else {
-    fingerBoneList.forEach(({ idx, finger, joint, axes }) => {
-      const b = bones[idx];
-      if (!b) return;
-      b.rotation.set(0, 0, 0);
-
-      // Get bend for this finger at this joint
-      const bendBase = p.bends?.[finger] ?? 0;
-      // Taper: joints deeper in bend more
-      const bend = bendBase * (joint === 0 ? 0.5 : joint === 1 ? 0.8 : 1.0);
-
-      // Primary bend axis (X for most fingers, Y for thumb)
-      const isThumb = (finger === 0);
-      if (isThumb) {
-        if (axes.includes('y')) b.rotation.y = -bend * (currentSide === 'right' ? 1 : -1);
-      } else {
-        if (axes.includes('x')) b.rotation.x = -bend; // negative = curl toward palm
-      }
-    });
-  }
-
-  mmdMesh.skeleton.update();
-  syncSlidersForCurrentFinger();
-  showToast(name === 'open' ? '開いた手' : PRESET_NAMES[name] ?? name);
+  if (!PRESETS[name]) return;
+  angles = PRESETS[name]();
+  applyAngles();
+  buildSliders(currentFinger);
 }
 
-const PRESET_NAMES = {
-  fist: '握り拳', point: '指差し', peace: 'ピース',
-  ok: 'OK', pinch: 'ピンチ', hold: '小指立て', claw: '鷲掴み',
-};
-
-function showToast(msg) {
-  const t = document.getElementById('help-toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._tid);
-  t._tid = setTimeout(() => t.classList.remove('show'), 1500);
-}
-
-
-// ════════════════════════════════════════════════════════════════════════════════
-// INTERACTIVE POSING (long-press + drag on 3D model)
-// ════════════════════════════════════════════════════════════════════════════════
-
+// ═══════════════════════════════════════════════════════
+//  Long-press + drag (direct bone rotation on 3D view)
+// ═══════════════════════════════════════════════════════
 const raycaster = new THREE.Raycaster();
-const hoverLabel = document.getElementById('bone-hover-label');
-const lpRing     = document.getElementById('long-press-ring');
+const ring = document.getElementById('press-ring');
+let pressTimer   = null;
+let dragging     = false;
+let activeJoint  = null;
+let dragStart    = { x: 0, y: 0 };
+let angleSnapshot = {};
 
-// Which bone indices count as "hand" bones we want to interact with
-function getInteractiveBones() {
-  const list = FINGER_BONES[currentSide].map(b => b.idx);
-  const wb   = WRIST_BONES[currentSide].map(b => b.idx);
-  return new Set([...list, ...wb]);
+const DRAG_SENSITIVITY = 0.5; // degrees per pixel
+
+function getPointerPos(e) {
+  const t = e.touches ? e.touches[0] : e;
+  return { x: t.clientX, y: t.clientY };
 }
 
-function getBoneAt(cx, cy) {
-  if (!mmdMesh) return null;
+function hitTestJoint(px, py) {
   const rect = canvas.getBoundingClientRect();
-  raycaster.setFromCamera({
-    x:  ((cx - rect.left) / rect.width)  * 2 - 1,
-    y: -((cy - rect.top)  / rect.height) * 2 + 1,
-  }, camera);
-  const hits = raycaster.intersectObject(mmdMesh, false);
+  const nx = ((px - rect.left) / rect.width)  * 2 - 1;
+  const ny = -((py - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera({ x: nx, y: ny }, camera);
+  const meshes = [...meshToJoint.keys()];
+  const hits = raycaster.intersectObjects(meshes);
   if (!hits.length) return null;
-
-  // Find bone with highest skin weight across all 3 face vertices
-  const geo     = mmdMesh.geometry;
-  const face    = hits[0].face;
-  const skinIdx = geo.attributes.skinIndex;
-  const skinWt  = geo.attributes.skinWeight;
-  if (!skinIdx || !skinWt) return null;
-  const acc  = {};
-  for (const fvi of [face.a, face.b, face.c]) {
-    for (let k = 0; k < 4; k++) {
-      const bi = skinIdx.getComponent(fvi, k);
-      const w  = skinWt.getComponent(fvi, k);
-      if (w > 0.001) acc[bi] = (acc[bi] || 0) + w;
-    }
-  }
-  const top = Object.entries(acc).sort((a, b) => b[1] - a[1])[0];
-  let bestBone = top ? +top[0] : null;
-
-  // Only interact with hand bones
-  const interactive = getInteractiveBones();
-  return interactive.has(bestBone) ? bestBone : null;
+  return meshToJoint.get(hits[0].object) ?? null;
 }
 
-let selectedBoneIdx = null;
+function startPress(e) {
+  if (e.touches && e.touches.length > 1) return;
+  const pos = getPointerPos(e);
 
-const gesture = {
-  phase: 'idle', timer: null, pid: null,
-  startX: 0, startY: 0, lastX: 0, lastY: 0, boneAtPress: null,
-};
+  ring.style.left = pos.x + 'px'; ring.style.top = pos.y + 'px';
+  ring.classList.add('show');
+  requestAnimationFrame(() => ring.classList.add('grow'));
 
-const LONG_PRESS_MS  = 240;
-const CLICK_MAX_MOVE = 12;
-const ROT_SENS       = 0.010;
-
-function startLpRing(cx, cy) {
-  lpRing.style.left = cx + 'px';
-  lpRing.style.top  = cy + 'px';
-  lpRing.style.display = 'block';
-  lpRing.classList.remove('pop');
-  requestAnimationFrame(() => lpRing.classList.add('pop'));
-  setTimeout(() => { lpRing.style.display = 'none'; }, 350);
+  pressTimer = setTimeout(() => {
+    const joint = hitTestJoint(pos.x, pos.y);
+    if (!joint) { cancelPress(); return; }
+    activeJoint = joint;
+    dragStart   = { ...pos };
+    dragging    = true;
+    angleSnapshot = { ...angles };
+    controls.enabled = false;
+    ring.classList.remove('show', 'grow');
+    if (navigator.vibrate) navigator.vibrate(30);
+  }, 300);
 }
 
-function rotateBone(idx, dx, dy) {
-  if (!mmdMesh) return;
-  const bone = mmdMesh.skeleton.bones[idx];
-  if (!bone) return;
-  bone.rotation.y += dx * ROT_SENS;
-  bone.rotation.x += dy * ROT_SENS;
-  mmdMesh.skeleton.update();
+function onDrag(e) {
+  if (e.cancelable) e.preventDefault();
+  if (!dragging || !activeJoint) return;
+  const pos = getPointerPos(e);
+  const dx = pos.x - dragStart.x;
+  const dy = pos.y - dragStart.y;
 
-  // Sync sliders in real-time
-  for (const axis of ['x', 'y', 'z']) {
-    const key = `${idx}-${axis}`;
-    const entry = sliderMap.get(key);
-    if (entry) {
-      entry.slider.value    = bone.rotation[axis];
-      entry.valEl.textContent = toDeg(bone.rotation[axis]);
+  const jn = activeJoint.name;
+  if (jn === 'thumb_cmc') {
+    angles.thumb_cmc_open = Math.max(0, Math.min(80,
+      (angleSnapshot.thumb_cmc_open || 0) + dx * DRAG_SENSITIVITY));
+    angles.thumb_cmc_opp  = Math.max(0, Math.min(70,
+      (angleSnapshot.thumb_cmc_opp  || 0) - dy * DRAG_SENSITIVITY));
+  } else if (jn === 'thumb_mcp') {
+    angles.thumb_mcp_flex = Math.max(0, Math.min(60,
+      (angleSnapshot.thumb_mcp_flex || 0) + dy * DRAG_SENSITIVITY));
+  } else if (jn === 'thumb_ip') {
+    angles.thumb_ip_flex = Math.max(0, Math.min(80,
+      (angleSnapshot.thumb_ip_flex || 0) + dy * DRAG_SENSITIVITY));
+  } else {
+    // finger joints
+    const parts = jn.split('_'); // e.g. ['index','mcp'] or ['index','pip']
+    const [fn, jtype] = parts;
+    if (jtype === 'mcp') {
+      angles[`${fn}_mcp_flex`]   = Math.max(0, Math.min(90,
+        (angleSnapshot[`${fn}_mcp_flex`] || 0) + dy * DRAG_SENSITIVITY));
+      angles[`${fn}_mcp_spread`] = Math.max(-25, Math.min(25,
+        (angleSnapshot[`${fn}_mcp_spread`] || 0) + dx * DRAG_SENSITIVITY));
+    } else if (jtype === 'pip') {
+      angles[`${fn}_pip_flex`] = Math.max(0, Math.min(110,
+        (angleSnapshot[`${fn}_pip_flex`] || 0) + dy * DRAG_SENSITIVITY));
+    } else if (jtype === 'dip') {
+      angles[`${fn}_dip_flex`] = Math.max(0, Math.min(90,
+        (angleSnapshot[`${fn}_dip_flex`] || 0) + dy * DRAG_SENSITIVITY));
     }
+  }
+  applyAngles();
+  syncSliders();
+}
+
+function endPress() {
+  cancelPress();
+  if (dragging) {
+    dragging = false; activeJoint = null;
+    controls.enabled = true;
   }
 }
 
-function selectBone(idx) {
-  if (!mmdMesh) return;
-  selectedBoneIdx = idx;
-  // Switch to the finger group that contains this bone
-  const fingerBones = FINGER_BONES[currentSide];
-  const found = fingerBones.find(b => b.idx === idx);
-  if (found !== undefined) {
-    const newFinger = found.finger;
-    if (newFinger !== activeFingerGroup) {
-      setFingerTab(newFinger);
-    }
-  }
-  // Show bone name
-  const mmdBones = mmdMesh.userData?.MMD?.bones ?? [];
-  const name = mmdBones[idx]?.name ?? `Bone ${idx}`;
-  hoverLabel.textContent = name;
-  hoverLabel.style.display = 'block';
-  setTimeout(() => { hoverLabel.style.display = 'none'; }, 1500);
+function cancelPress() {
+  clearTimeout(pressTimer); pressTimer = null;
+  ring.classList.remove('show', 'grow');
 }
 
-canvas.addEventListener('pointerdown', e => {
-  if (e.pointerType !== 'touch' && e.button !== 0) return;
+canvas.addEventListener('pointerdown',  startPress, { passive: false });
+canvas.addEventListener('pointermove',  onDrag,     { passive: false });
+canvas.addEventListener('pointerup',    endPress);
+canvas.addEventListener('pointercancel',endPress);
+canvas.addEventListener('contextmenu',  e => e.preventDefault());
 
-  const bi = getBoneAt(e.clientX, e.clientY);
-  gesture.pid = e.pointerId;
-  gesture.phase = 'pressing';
-  gesture.startX = gesture.lastX = e.clientX;
-  gesture.startY = gesture.lastY = e.clientY;
-  gesture.boneAtPress = bi;
+// ═══════════════════════════════════════════════════════
+//  Toolbar events
+// ═══════════════════════════════════════════════════════
+document.getElementById('btn-hand').addEventListener('click', () => showMode('hand'));
+document.getElementById('btn-ear' ).addEventListener('click', () => showMode('ear'));
 
-  gesture.timer = setTimeout(() => {
-    if (gesture.phase !== 'pressing') return;
-    if (gesture.boneAtPress === null) return;
-    gesture.phase = 'rotating';
-    startLpRing(gesture.startX, gesture.startY);
-    canvas.classList.add('bone-rotate');
-    selectBone(gesture.boneAtPress);
-  }, LONG_PRESS_MS);
-}, { passive: true });
+document.getElementById('btn-side').addEventListener('click', () => {
+  currentSide = currentSide === 'right' ? 'left' : 'right';
+  updateSide();
+});
 
-canvas.addEventListener('pointermove', e => {
-  if (gesture.pid === null || e.pointerId !== gesture.pid) return;
-  const dx = e.clientX - gesture.lastX;
-  const dy = e.clientY - gesture.lastY;
-  const totalMove = Math.hypot(e.clientX - gesture.startX, e.clientY - gesture.startY);
-
-  if (gesture.phase === 'pressing') {
-    if (totalMove > CLICK_MAX_MOVE) {
-      clearTimeout(gesture.timer);
-      gesture.phase = 'idle';
-    }
-  } else if (gesture.phase === 'rotating') {
-    rotateBone(gesture.boneAtPress, dx, dy);
+document.getElementById('btn-reset').addEventListener('click', () => {
+  if (currentMode === 'hand') {
+    angles = defaultAngles();
+    applyAngles();
+    buildSliders(currentFinger);
+  } else {
+    animateCamTo(CAM.ear.pos, CAM.ear.target, 0.5);
   }
+});
 
-  gesture.lastX = e.clientX;
-  gesture.lastY = e.clientY;
-}, { passive: true });
-
-canvas.addEventListener('pointerup', e => {
-  if (gesture.pid === null || e.pointerId !== gesture.pid) return;
-  clearTimeout(gesture.timer);
-  const wasPressing = gesture.phase === 'pressing';
-  const moved = Math.hypot(e.clientX - gesture.startX, e.clientY - gesture.startY);
-  canvas.classList.remove('bone-rotate');
-  gesture.phase = 'idle';
-  gesture.pid   = null;
-
-  if (wasPressing && moved <= CLICK_MAX_MOVE && gesture.boneAtPress !== null) {
-    selectBone(gesture.boneAtPress);
-  }
-}, { passive: true });
-
-canvas.addEventListener('pointercancel', () => {
-  clearTimeout(gesture.timer);
-  gesture.phase = 'idle'; gesture.pid = null;
-  canvas.classList.remove('bone-rotate');
-}, { passive: true });
-
-
-// ════════════════════════════════════════════════════════════════════════════════
-// EVENT LISTENERS
-// ════════════════════════════════════════════════════════════════════════════════
+document.getElementById('btn-shot').addEventListener('click', () => {
+  renderer.render(scene, camera);
+  const a = Object.assign(document.createElement('a'), {
+    href: canvas.toDataURL('image/png'),
+    download: 'hand-ear-pose.png',
+  });
+  a.click();
+});
 
 // Finger tabs
-document.getElementById('finger-tabs').addEventListener('click', e => {
-  const tab = e.target.closest('.finger-tab');
-  if (!tab) return;
-  setFingerTab(+tab.dataset.finger);
-});
-
-function setFingerTab(idx) {
-  activeFingerGroup = idx;
-  document.querySelectorAll('.finger-tab').forEach((t, i) => {
-    t.classList.toggle('active', i === idx);
+document.querySelectorAll('.finger-tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.finger-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFinger = btn.dataset.finger;
+    buildSliders(currentFinger);
   });
-  renderFingerSliders(idx);
-}
-
-// Mode buttons
-document.getElementById('toolbar').addEventListener('click', e => {
-  const btn = e.target.closest('[data-mode]');
-  if (btn) { applyMode(btn.dataset.mode); return; }
-
-  const actionBtn = e.target.closest('[data-action]');
-  if (!actionBtn) return;
-  switch (actionBtn.dataset.action) {
-    case 'open':       openFolderPicker(); break;
-    case 'reset':      resetPose();        break;
-    case 'screenshot': doScreenshot();     break;
-  }
-});
-
-// Hand L/R toggle
-document.getElementById('hand-lr-btn').addEventListener('click', () => {
-  currentSide = currentSide === 'right' ? 'left' : 'right';
-  document.getElementById('hand-lr-btn').textContent =
-    currentSide === 'right' ? '右手 ⇄ 左手' : '左手 ⇄ 右手';
-
-  if (currentMode === 'hand') {
-    const cp = CAM_PRESETS[`hand_${currentSide}`];
-    animateCameraTo(cp.pos, cp.target, 0.5);
-  } else {
-    const cp = CAM_PRESETS[`ear_${currentSide}`];
-    animateCameraTo(cp.pos, cp.target, 0.5);
-  }
-  renderFingerSliders(activeFingerGroup);
-  showToast(currentSide === 'right' ? '右手' : '左手');
 });
 
 // Presets
-document.getElementById('preset-row').addEventListener('click', e => {
-  const btn = e.target.closest('.preset-btn');
-  if (btn) applyPreset(btn.dataset.preset);
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
 });
 
-// File loading
-const folderInput = document.getElementById('folder-input');
-folderInput.addEventListener('change', e => {
-  if (e.target.files.length) ingestFiles(e.target.files);
-});
-
-async function openFolderPicker() {
-  if (window.showDirectoryPicker) {
-    try {
-      const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
-      await _IDB.save('model-dir', dirHandle);
-      await autoLoadDirHandle(dirHandle);
-      return;
-    } catch (e) {
-      if (e.name === 'AbortError') return;
-    }
-  }
-  folderInput.value = ''; folderInput.click();
+// ═══════════════════════════════════════════════════════
+//  Resize
+// ═══════════════════════════════════════════════════════
+function onResize() {
+  const vp = document.getElementById('viewport');
+  const W = vp.clientWidth, H = vp.clientHeight;
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+  renderer.setSize(W, H);
 }
+new ResizeObserver(onResize).observe(document.getElementById('viewport'));
+onResize();
 
-// Drag & drop
-document.addEventListener('dragover', e => {
-  e.preventDefault();
-  document.getElementById('ov-dropzone').classList.add('drag-active');
-});
-document.addEventListener('dragleave', e => {
-  if (!e.relatedTarget || !document.body.contains(e.relatedTarget)) {
-    document.getElementById('ov-dropzone').classList.remove('drag-active');
+// ═══════════════════════════════════════════════════════
+//  Render loop
+// ═══════════════════════════════════════════════════════
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const t = performance.now();
+  if (camAnim) {
+    const done = camAnim(t);
+    if (done) camAnim = null;
+    controls.target.set(...controls.target.toArray()); // sync
   }
-});
-document.addEventListener('drop', async e => {
-  e.preventDefault();
-  document.getElementById('ov-dropzone').classList.remove('drag-active');
-  const items = Array.from(e.dataTransfer?.items ?? []);
-  if (items.length && items[0].getAsFileSystemHandle) {
-    try {
-      const handle = await items[0].getAsFileSystemHandle();
-      if (handle?.kind === 'directory') {
-        await _IDB.save('model-dir', handle);
-        await autoLoadDirHandle(handle);
-        return;
-      }
-    } catch {}
-  }
-  if (items.length) {
-    const files = [];
-    await Promise.all(items.map(async item => {
-      const entry = item.webkitGetAsEntry?.();
-      if (!entry) return;
-      await collectEntry(entry, files);
-    }));
-    if (files.length) { ingestFiles(files); return; }
-  }
-  if (e.dataTransfer?.files?.length) ingestFiles(e.dataTransfer.files);
-});
-
-async function collectEntry(entry, out) {
-  if (!entry) return;
-  if (entry.isFile) {
-    await new Promise(res => entry.file(f => { out.push(f); res(); }, res));
-  } else if (entry.isDirectory) {
-    const reader = entry.createReader();
-    let batch;
-    do {
-      batch = await new Promise(res => reader.readEntries(res, () => res([])));
-      await Promise.all(batch.map(child => collectEntry(child, out)));
-    } while (batch.length > 0);
-  }
-}
-
-document.getElementById('ov-browse-btn').addEventListener('click', openFolderPicker);
-
-// ── Pose helpers ───────────────────────────────────────────────────────────────
-function resetPose() {
-  if (!mmdMesh) return;
-  // Reset only hand/wrist bones for current side
-  const allBones = [
-    ...FINGER_BONES[currentSide].map(b => b.idx),
-    ...WRIST_BONES[currentSide].map(b => b.idx),
-  ];
-  allBones.forEach(idx => {
-    const b = mmdMesh.skeleton.bones[idx];
-    if (b) b.rotation.set(0, 0, 0);
-  });
-  mmdMesh.skeleton.update();
-  syncSlidersForCurrentFinger();
-  showToast('リセット');
-}
-
-function doScreenshot() {
+  controls.update();
+  refreshEarLabelPositions();
   renderer.render(scene, camera);
-  const a = Object.assign(document.createElement('a'), {
-    href:     canvas.toDataURL('image/png'),
-    download: 'hand-pose.png',
-  });
-  a.click();
-  showToast('📷 スクリーンショット保存');
 }
+animate();
 
-// ── Overlay helpers ────────────────────────────────────────────────────────────
-function showOverlayLoading(msg) {
-  const ov = document.getElementById('overlay');
-  ov.style.display = 'flex';
-  document.getElementById('ov-dropzone').style.display   = 'none';
-  document.getElementById('ov-browse-btn').style.display = 'none';
-  document.getElementById('ov-autoload-btn').style.display = 'none';
-  document.getElementById('ov-autoload-hint').style.display = 'none';
-  document.getElementById('ov-spinner').style.display    = 'block';
-  document.getElementById('ov-msg').style.color          = '#86cecb';
-  document.getElementById('ov-msg').textContent          = msg;
-}
+// ═══════════════════════════════════════════════════════
+//  Startup: build both models
+// ═══════════════════════════════════════════════════════
+buildHand();
+buildEar();
+showMode('hand');
+buildSliders('thumb');
 
-function showOverlayError(msg) {
-  const ov = document.getElementById('overlay');
-  ov.style.display = 'flex';
-  document.getElementById('ov-dropzone').style.display   = 'flex';
-  document.getElementById('ov-browse-btn').style.display = '';
-  document.getElementById('ov-spinner').style.display    = 'none';
-  document.getElementById('ov-msg').style.color          = '#e05555';
-  document.getElementById('ov-msg').textContent          = msg;
-}
-
-function hideOverlay() {
-  document.getElementById('overlay').style.display = 'none';
-}
-
-// ── fetch() auto-load (HTTP / GitHub Pages / npx serve) ─────────────────────
-function loadModelFromURL(modelUrl) {
-  showOverlayLoading('モデルを読み込み中...');
-  if (mmdMesh) {
-    scene.remove(mmdMesh);
-    mmdMesh.geometry?.dispose();
-    const ms = Array.isArray(mmdMesh.material) ? mmdMesh.material : [mmdMesh.material];
-    ms.forEach(m => { m.map?.dispose(); m.dispose(); });
-    mmdMesh = null;
-  }
-  // Build a LoadingManager that resolves texture paths to the model's base directory.
-  // This handles Windows-style absolute paths (C:\...\Amiku1.png) embedded in PMX files.
-  const _urlMgr = new THREE.LoadingManager();
-  const _baseDir = modelUrl.replace(/[^/]+$/, ''); // e.g. "Appearance Miku/"
-  _urlMgr.setURLModifier(url => {
-    const bare = url.replace(/\\/g, '/').split('/').pop();
-    if (!bare) return url;
-    // Keep the PMX itself untouched; reroute everything else to the base directory
-    if (url === modelUrl || /\.pmx$/i.test(bare)) return url;
-    return _baseDir + bare;
-  });
-  new MMDLoader(_urlMgr).load(
-    modelUrl,
-    mesh => {
-      mmdMesh = mesh;
-      mesh.castShadow = mesh.receiveShadow = true;
-      scene.add(mesh);
-      applyMode(currentMode);
-      buildSliders();
-      hideOverlay();
-    },
-    xhr => { if (xhr.total > 0) showOverlayLoading(`読み込み中… ${Math.round(xhr.loaded/xhr.total*100)}%`); },
-    err  => { showOverlayError('ロード失敗:\n' + (err?.message ?? String(err))); }
-  );
-}
-
-async function tryFetchAutoLoad() {
-  if (location.protocol === 'file:') return false;
-  let config;
-  try {
-    const res = await fetch('./auto-load.json', { cache: 'no-cache' });
-    if (!res.ok) return false;
-    config = await res.json();
-  } catch { return false; }
-  if (!config?.model) return false;
-  loadModelFromURL(config.model);
-  return true;
-}
-
-// ── Startup ───────────────────────────────────────────────────────────────────
-(async () => {
-  try {
-    const httpOk = await tryFetchAutoLoad();
-    if (!httpOk) await tryAutoLoad();
-  } catch { /* silent */ }
-})();
 </script>
 </body>
 </html>
