@@ -411,6 +411,22 @@ input[type=range] {
 }
 .vmd-close-btn:hover { background: #ffeef5; }
 body.vmd-active #pose-bar { bottom: 72px; }
+
+/* VMD option switcher (auto-load.json の _vmd_options から生成) */
+#vmd-switcher {
+  display: none; gap: 5px; flex-wrap: wrap; justify-content: center;
+  padding-bottom: 2px; border-bottom: 1px solid #86cecb; width: 100%; max-width: 720px;
+}
+#vmd-switcher.visible { display: flex; }
+.vmd-sw-btn {
+  padding: 4px 13px; border-radius: 5px; font-size: 12px; cursor: pointer;
+  border: 1px solid #86cecb; background: #c3e5e7; color: #373b3e;
+  white-space: nowrap; font: inherit; letter-spacing: 0.04em;
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.vmd-sw-btn:hover  { background: #86cecb; }
+.vmd-sw-btn.active { background: #137a7f; border-color: #0d5e62; color: #fffeec; font-weight: bold; }
+
 @media (max-width: 640px) {
   #vmd-transport-row { flex-wrap: wrap; justify-content: center; }
   #vmd-name { display: none; }
@@ -551,6 +567,8 @@ body.vmd-active #pose-bar { bottom: 72px; }
 
 <!-- ═══ VMD TRANSPORT BAR ═══════════════════════════════ -->
 <div id="vmd-bar">
+  <!-- VMD option switcher — populated by tryFetchAutoLoad() when _vmd_options exists -->
+  <div id="vmd-switcher"></div>
   <div id="vmd-scrubber-row">
     <span id="vmd-time">0:00.0 / 0:00.0</span>
     <input type="range" id="vmd-scrubber" min="0" max="100" step="0.033" value="0">
@@ -901,14 +919,38 @@ function loadModelFromURL(modelUrl) {
 }
 
 // Load VMD directly from a URL
+// VMD switcher state (populated from auto-load.json _vmd_options)
+let _vmdOptions    = null;  // { label: relativeUrl }
+let _currentVmdUrl = null;  // currently loaded VMD URL (for highlighting)
+
 function loadVMDFromURL(vmdUrl) {
   if (!mmdMesh) return;
+  _currentVmdUrl = vmdUrl;
   new MMDLoader().loadAnimation(
     vmdUrl, mmdMesh,
     clip => { _loadVmdClip(clip, decodeURIComponent(vmdUrl.split('/').pop())); },
     undefined,
     err  => console.error('[VMD URL]', err)
   );
+}
+
+// Build / refresh the VMD option buttons inside #vmd-switcher
+function buildVmdSwitcher() {
+  const sw = document.getElementById('vmd-switcher');
+  if (!_vmdOptions) { sw.classList.remove('visible'); return; }
+  sw.innerHTML = '';
+  for (const [label, url] of Object.entries(_vmdOptions)) {
+    const btn = document.createElement('button');
+    btn.className = 'vmd-sw-btn' + (url === _currentVmdUrl ? ' active' : '');
+    btn.textContent = label;
+    btn.title = url;
+    btn.addEventListener('click', () => {
+      if (url === _currentVmdUrl) return; // already loaded
+      loadVMDFromURL(url);
+    });
+    sw.appendChild(btn);
+  }
+  sw.classList.add('visible');
 }
 
 // Try to fetch auto-load.json and load model (+ optional VMD) automatically.
@@ -924,8 +966,17 @@ async function tryFetchAutoLoad() {
   } catch { return false; }
   if (!config?.model) return false;
 
+  // Save VMD option map (keys starting with _ are comments, skip them)
+  if (config._vmd_options && typeof config._vmd_options === 'object') {
+    _vmdOptions = {};
+    for (const [k, v] of Object.entries(config._vmd_options)) {
+      if (!k.startsWith('_')) _vmdOptions[k] = v;
+    }
+  }
+
   // Hook VMD auto-load to fire after model finishes loading
   if (config.vmd) {
+    _currentVmdUrl = config.vmd;
     _onHideOverlayOnce = () => loadVMDFromURL(config.vmd);
   }
   loadModelFromURL(config.model);
@@ -2201,6 +2252,7 @@ function _loadVmdClip(clip, fileName) {
   document.getElementById('vmd-name').textContent = (fileName ?? '').replace(/\.vmd$/i, '');
   document.getElementById('vmd-bar').classList.add('active');
   document.body.classList.add('vmd-active');
+  buildVmdSwitcher(); // refresh switcher active-state after VMD change
   hideOverlay();
   seekTo(0);
 
