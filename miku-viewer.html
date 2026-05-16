@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MMD PMX Viewer — Appearance Miku あぴミク</title>
+<title>MikuMikuPosing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
 <script type="importmap">
 {
   "imports": {
@@ -17,35 +19,39 @@
 
 html, body {
   width: 100%; height: 100%; overflow: hidden;
-  background: #141a2e; color: #d8dff0;
-  font: 12px/1.45 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+  background: #fffeec; color: #373b3e;
+  font: 12px/1.45 'DotGothic16', 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
+  letter-spacing: 0.2em;
 }
+/* Numeric displays — no extra spacing so digits stay tabular */
+.ax-val, #vmd-time, .set-val,
+input[type=range], input[type=color], input[type=checkbox] { letter-spacing: 0; }
 
 /* ── Toolbar ─────────────────────────────────────────── */
 #toolbar {
   position: fixed; top: 0; left: 0; right: 0; height: 44px;
-  background: linear-gradient(180deg, #18243f 0%, #101a30 100%);
-  border-bottom: 1px solid #1e2d50;
+  background: linear-gradient(180deg, #158a90 0%, #137a7f 100%);
+  border-bottom: 1px solid #86cecb;
   display: flex; align-items: center; gap: 5px; padding: 0 12px;
   z-index: 100; -webkit-user-select: none; user-select: none; flex-shrink: 0;
 }
 .tb-title {
-  font-size: 13px; font-weight: 700; color: #6ec6f0;
+  font-size: 13px; font-weight: 700; color: #fffeec;
   letter-spacing: 0.03em; margin-right: 6px; white-space: nowrap;
 }
-.tb-sep { width: 1px; height: 26px; background: #1e3060; margin: 0 3px; flex-shrink: 0; }
+.tb-sep { width: 1px; height: 26px; background: #86cecb; margin: 0 3px; flex-shrink: 0; }
 .tb-btn {
-  padding: 5px 11px; border: 1px solid #243870; border-radius: 5px;
-  background: #172445; color: #b8c8e8; font-size: 11px; cursor: pointer;
+  padding: 5px 11px; border: 1px solid #86cecb; border-radius: 5px;
+  background: #c3e5e7; color: #373b3e; font-size: 11px; cursor: pointer;
   white-space: nowrap; transition: background 0.12s, border-color 0.12s, color 0.12s;
   flex-shrink: 0;
 }
-.tb-btn:hover { background: #1f3260; border-color: #3a62c0; color: #d8e8ff; }
-.tb-btn:active { background: #162040; }
-.tb-btn.accent { background: #1f3a70; border-color: #3a6ad4; color: #90c0ff; }
-.tb-btn.accent:hover { background: #2a4d90; border-color: #5a8aee; }
+.tb-btn:hover { background: #86cecb; border-color: #137a7f; color: #373b3e; }
+.tb-btn:active { background: #bec8d1; }
+.tb-btn.accent { background: #e12885; border-color: #c0206a; color: #fffeec; }
+.tb-btn.accent:hover { background: #c0206a; border-color: #a0185a; }
 .tb-spacer { flex: 1; }
-.tb-hint { font-size: 10px; color: #334; white-space: nowrap; }
+.tb-hint { font-size: 10px; color: #bec8d1; white-space: nowrap; }
 
 /* ── Main layout ─────────────────────────────────────── */
 #main-layout {
@@ -57,11 +63,11 @@ html, body {
 #sidebar-left, #sidebar-right {
   width: 248px; min-width: 0; flex-shrink: 0;
   overflow-y: auto; overflow-x: hidden;
-  background: #0f1622;
+  background: #c3e5e7;
   transition: width 0.22s ease;
 }
-#sidebar-left  { border-right: 1px solid #192540; }
-#sidebar-right { border-left:  1px solid #192540; }
+#sidebar-left  { border-right: 1px solid #86cecb; }
+#sidebar-right { border-left:  1px solid #86cecb; }
 #sidebar-left.collapsed,
 #sidebar-right.collapsed { width: 0; }
 
@@ -71,58 +77,58 @@ html, body {
 #sidebar-left::-webkit-scrollbar-track,
 #sidebar-right::-webkit-scrollbar-track { background: transparent; }
 #sidebar-left::-webkit-scrollbar-thumb,
-#sidebar-right::-webkit-scrollbar-thumb { background: #1e3060; border-radius: 2px; }
+#sidebar-right::-webkit-scrollbar-thumb { background: #86cecb; border-radius: 2px; }
 
 /* sidebar title bar */
 .sb-title {
   padding: 8px 10px 7px;
-  font-size: 10px; font-weight: 700; color: #5a9cd8;
-  text-transform: uppercase; letter-spacing: 0.07em;
-  background: #0c1220; border-bottom: 1px solid #192540;
+  font-size: 10px; font-weight: 700; color: #fffeec;
+  text-transform: uppercase; letter-spacing: 0.18em;
+  background: #137a7f; border-bottom: 1px solid #86cecb;
   position: sticky; top: 0; z-index: 2;
 }
 
 /* search */
-.sb-search { padding: 6px 8px; border-bottom: 1px solid #192540; background: #0c1220; }
+.sb-search { padding: 6px 8px; border-bottom: 1px solid #86cecb; background: #bec8d1; }
 .sb-search input {
   width: 100%; padding: 5px 8px; border-radius: 4px;
-  border: 1px solid #1e3060; background: #141a2e;
-  color: #b8c8e8; font-size: 11px; outline: none;
+  border: 1px solid #86cecb; background: #fffeec;
+  color: #373b3e; font-size: 11px; outline: none;
   transition: border-color 0.15s;
 }
-.sb-search input:focus { border-color: #3a62c0; }
+.sb-search input:focus { border-color: #137a7f; }
 
 /* accordion */
-.ac-group { border-bottom: 1px solid #141f36; }
+.ac-group { border-bottom: 1px solid #86cecb; }
 .ac-head {
   padding: 7px 10px; cursor: pointer;
-  background: #0c1220;
-  font-size: 10px; font-weight: 700; color: #7aaad4;
-  text-transform: uppercase; letter-spacing: 0.05em;
+  background: #bec8d1;
+  font-size: 10px; font-weight: 700; color: #137a7f;
+  text-transform: uppercase; letter-spacing: 0.18em;
   -webkit-user-select: none;
   user-select: none;
   display: flex; align-items: center; gap: 6px;
   transition: background 0.1s;
 }
 .ac-head::before {
-  content: '▶'; font-size: 8px; color: #3a5080;
+  content: '▶'; font-size: 8px; color: #86cecb;
   transition: transform 0.14s; flex-shrink: 0;
 }
 .ac-head.open::before { transform: rotate(90deg); }
-.ac-head:hover { background: #111b2e; }
+.ac-head:hover { background: #86cecb; }
 .ac-body { padding: 4px 8px 8px; }
 .ac-body.hidden { display: none; }
 
 /* bone entries */
 .bone-entry { margin-bottom: 8px; }
 .bone-name {
-  font-size: 10px; color: #6ab0e0; margin-bottom: 3px;
+  font-size: 10px; color: #0e5f63; font-weight: 700; margin-bottom: 3px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  cursor: default;
+  cursor: default; letter-spacing: 0.15em;
 }
 .ik-badge {
   display: inline-block; font-size: 8px; padding: 0 3px;
-  background: #2a1a40; color: #a070e0; border: 1px solid #4a2a70;
+  background: #fffeec; color: #e12885; border: 1px solid #e12885;
   border-radius: 2px; margin-left: 4px; vertical-align: middle;
 }
 .axis-row {
@@ -130,18 +136,17 @@ html, body {
 }
 .ax-lbl {
   width: 11px; font-size: 9px; font-weight: 800; flex-shrink: 0; text-align: center;
+  color: #0e5f63;
 }
-.ax-lbl.x { color: #e06060; }
-.ax-lbl.y { color: #60c060; }
-.ax-lbl.z { color: #5090e0; }
+.ax-lbl.x, .ax-lbl.y, .ax-lbl.z { color: #0e5f63; }
 
 input[type=range] {
-  flex: 1; cursor: pointer; accent-color: #e06090;
+  flex: 1; cursor: pointer; accent-color: #e12885;
   height: 3px;
 }
 .ax-val {
-  width: 42px; font-size: 9px; text-align: right; color: #7888a8; flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
+  width: 42px; font-size: 9px; text-align: right; color: #0e5f63; font-weight: 700;
+  flex-shrink: 0; font-variant-numeric: tabular-nums; letter-spacing: 0;
 }
 
 /* material entries */
@@ -149,18 +154,18 @@ input[type=range] {
   display: flex; align-items: center; gap: 7px; padding: 4px 2px;
   border-radius: 3px; transition: background 0.1s; cursor: pointer;
 }
-.mat-entry:hover { background: #141f36; }
+.mat-entry:hover { background: #bec8d1; }
 .mat-swatch {
   width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0;
-  border: 1px solid #2a3050;
+  border: 1px solid #86cecb;
 }
-.mat-entry input[type=checkbox] { accent-color: #e06090; cursor: pointer; flex-shrink: 0; }
+.mat-entry input[type=checkbox] { accent-color: #e12885; cursor: pointer; flex-shrink: 0; }
 .mat-entry label {
   flex: 1; font-size: 11px; cursor: pointer;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  color: #a8b8d0;
+  color: #373b3e;
 }
-.mat-sep { height: 1px; background: #192540; margin: 4px 0; }
+.mat-sep { height: 1px; background: #86cecb; margin: 4px 0; }
 
 /* ── Viewport ─────────────────────────────────────────── */
 #viewport { flex: 1; position: relative; overflow: hidden; }
@@ -169,57 +174,57 @@ input[type=range] {
 /* ── Overlay ─────────────────────────────────────────── */
 #overlay {
   position: fixed; inset: 0; z-index: 300;
-  background: rgba(8, 12, 22, 0.94);
+  background: rgba(255, 254, 236, 0.97);
   display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 18px;
 }
 .ov-logo {
-  font-size: 28px; font-weight: 800; color: #6ec6f0;
-  letter-spacing: 3px; text-shadow: 0 0 30px #2468a0;
+  font-size: 28px; font-weight: 800; color: #137a7f;
+  letter-spacing: 3px; text-shadow: 0 2px 12px #86cecb;
 }
-.ov-sub { font-size: 12px; color: #3a5070; letter-spacing: 1px; }
+.ov-sub { font-size: 12px; color: #86cecb; letter-spacing: 1px; }
 #ov-dropzone {
   width: 340px; padding: 28px 0;
-  border: 2px dashed #1e3060; border-radius: 14px;
+  border: 2px dashed #86cecb; border-radius: 14px;
   display: flex; flex-direction: column; align-items: center; gap: 8px;
-  color: #3a5070; font-size: 13px;
+  color: #373b3e; font-size: 13px;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
 #ov-dropzone.drag-active {
-  border-color: #3a7ad4; color: #7aaaf4; background: rgba(30, 60, 120, 0.2);
+  border-color: #137a7f; color: #137a7f; background: rgba(19, 122, 127, 0.08);
 }
 .ov-drop-icon { font-size: 32px; }
-.ov-drop-hint { font-size: 11px; color: #2a3a58; }
+.ov-drop-hint { font-size: 11px; color: #86cecb; }
 #ov-browse-btn {
   padding: 9px 24px; border-radius: 7px;
-  border: 1px solid #1e3060; background: #172445;
-  color: #7aaaf4; font-size: 12px; cursor: pointer;
+  border: 1px solid #137a7f; background: #137a7f;
+  color: #fffeec; font-size: 12px; cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
 }
-#ov-browse-btn:hover { background: #1f3260; border-color: #3a62c0; }
+#ov-browse-btn:hover { background: #0f6570; border-color: #0f6570; }
 #ov-spinner {
   width: 36px; height: 36px;
-  border: 3px solid #1a2a50; border-top-color: #3a72d4;
+  border: 3px solid #bec8d1; border-top-color: #137a7f;
   border-radius: 50%; animation: spin 0.75s linear infinite;
   display: none;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 #ov-msg {
-  font-size: 12px; color: #b0c0d8; min-height: 18px;
+  font-size: 12px; color: #373b3e; min-height: 18px;
   text-align: center; max-width: 320px; line-height: 1.5;
 }
 
 /* ── Helper notice ────────────────────────────────────── */
 .notice {
-  padding: 18px 14px; color: #3a5070;
+  padding: 18px 14px; color: #86cecb;
   font-size: 11px; text-align: center; line-height: 1.7;
 }
 
 /* ── Interactive posing ───────────────────────────────── */
 
 /* Selected bone highlight in sidebar */
-.bone-entry.selected { background: rgba(255,160,50,0.07); border-radius: 4px; }
-.bone-entry.selected .bone-name { color: #ffb040; }
+.bone-entry.selected { background: rgba(225,40,133,0.07); border-radius: 4px; }
+.bone-entry.selected .bone-name { color: #e12885; }
 
 /* Cursor changes when hovering the model */
 #webgl-canvas.bone-hover  { cursor: pointer; }
@@ -228,16 +233,16 @@ input[type=range] {
 /* Floating hover label (desktop) */
 #bone-hover-label {
   position: fixed; pointer-events: none; z-index: 250; display: none;
-  background: rgba(8,14,28,0.88); color: #ffb840;
+  background: rgba(55,59,62,0.92); color: #fffeec;
   padding: 3px 9px; border-radius: 5px; font-size: 11px; white-space: nowrap;
-  border: 1px solid #7a5010; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  border: 1px solid #e12885; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
 }
 
 /* Long-press ring animation */
 #long-press-ring {
   position: fixed; pointer-events: none; z-index: 240; display: none;
   width: 52px; height: 52px; border-radius: 50%;
-  border: 2.5px solid #ffb040;
+  border: 2.5px solid #e12885;
   transform: translate(-50%, -50%) scale(0.3);
   opacity: 0; transition: none;
 }
@@ -254,8 +259,8 @@ input[type=range] {
 #pose-bar {
   position: fixed; bottom: 0; left: 0; right: 0;
   height: 56px; z-index: 150;
-  background: rgba(8,13,26,0.93);
-  border-top: 1px solid #c07010;
+  background: rgba(55,59,62,0.95);
+  border-top: 2px solid #e12885;
   backdrop-filter: blur(8px);
   display: none; align-items: center; justify-content: center;
   gap: 10px; padding: 0 16px;
@@ -265,36 +270,36 @@ input[type=range] {
 
 /* Bone name display in pose bar */
 #pose-bone-name {
-  font-size: 13px; font-weight: 700; color: #ffb040;
+  font-size: 13px; font-weight: 700; color: #e12885;
   max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   flex-shrink: 0;
 }
-.pose-sep { width: 1px; height: 28px; background: #3a2800; flex-shrink: 0; }
+.pose-sep { width: 1px; height: 28px; background: #86cecb; flex-shrink: 0; }
 
 /* Axis selector buttons */
 .pose-axis-btn {
   padding: 6px 13px; border-radius: 5px; font-size: 12px; cursor: pointer;
-  border: 1px solid #3a3010; background: #1a1a08; color: #887040;
+  border: 1px solid #bec8d1; background: #fffeec; color: #86cecb;
   transition: background 0.12s, border-color 0.12s, color 0.12s;
   flex-shrink: 0;
 }
-.pose-axis-btn.on  { background: #3a2400; border-color: #d08020; color: #ffb040; }
-.pose-axis-btn:hover { border-color: #806030; color: #ccaa60; }
+.pose-axis-btn.on  { background: #137a7f; border-color: #86cecb; color: #fffeec; }
+.pose-axis-btn:hover { border-color: #137a7f; color: #c3e5e7; }
 
 /* Rotation mode label in pose bar */
 #pose-mode-label {
-  font-size: 10px; color: #806040;
+  font-size: 10px; color: #86cecb;
   flex: 1; text-align: center; pointer-events: none;
 }
 
 /* Done / deselect button */
 #pose-done-btn {
   padding: 7px 16px; border-radius: 5px; font-size: 12px; cursor: pointer;
-  border: 1px solid #a04060; background: #28000e; color: #ff80a0;
+  border: 1px solid #e12885; background: #fffeec; color: #e12885;
   transition: background 0.12s;
   flex-shrink: 0;
 }
-#pose-done-btn:hover { background: #3a0018; }
+#pose-done-btn:hover { background: #ffeef5; }
 
 /* Hide toolbar hint on small screens */
 @media (max-width: 640px) {
@@ -309,46 +314,46 @@ input[type=range] {
 /* ── Settings modal ─────────────────────────────────── */
 #settings-modal {
   position: fixed; inset: 0; z-index: 400;
-  background: rgba(6,10,20,0.86);
+  background: rgba(190,200,209,0.85);
   display: none; align-items: center; justify-content: center;
 }
 #settings-modal.open { display: flex; }
 .settings-box {
-  background: #0f1828; border: 1px solid #1e3060;
+  background: #fffeec; border: 1px solid #86cecb;
   border-radius: 12px; padding: 24px 28px;
   min-width: 300px; max-width: 380px; width: 90vw;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.75);
+  box-shadow: 0 8px 40px rgba(19,122,127,0.18);
 }
 .settings-box h3 {
-  font-size: 14px; font-weight: 700; color: #6ec6f0;
+  font-size: 14px; font-weight: 700; color: #137a7f;
   margin-bottom: 18px; letter-spacing: 0.05em;
 }
 .settings-row {
   display: flex; align-items: center; gap: 10px; margin-bottom: 13px;
 }
-.settings-row label { flex: 1; font-size: 11px; color: #8898b8; }
+.settings-row label { flex: 1; font-size: 11px; color: #373b3e; }
 .settings-row input[type=color] {
-  width: 44px; height: 26px; border: 1px solid #1e3060;
-  border-radius: 4px; background: #0c1220; cursor: pointer; padding: 2px;
+  width: 44px; height: 26px; border: 1px solid #86cecb;
+  border-radius: 4px; background: #bec8d1; cursor: pointer; padding: 2px;
 }
-.settings-row input[type=range] { flex: 2; cursor: pointer; accent-color: #4a8ad4; }
-.settings-row input[type=checkbox] { cursor: pointer; accent-color: #4a8ad4; }
+.settings-row input[type=range] { flex: 2; cursor: pointer; accent-color: #137a7f; }
+.settings-row input[type=checkbox] { cursor: pointer; accent-color: #137a7f; }
 .set-val {
   width: 36px; font-size: 10px; text-align: right;
-  color: #5a7898; font-variant-numeric: tabular-nums; flex-shrink: 0;
+  color: #86cecb; font-variant-numeric: tabular-nums; flex-shrink: 0;
 }
 .settings-close-btn {
   margin-top: 14px; width: 100%; padding: 8px;
-  border: 1px solid #1e3060; background: #172445;
-  color: #8aaad8; border-radius: 6px; cursor: pointer;
+  border: 1px solid #86cecb; background: #c3e5e7;
+  color: #137a7f; border-radius: 6px; cursor: pointer;
   font-size: 12px; transition: background 0.12s;
 }
-.settings-close-btn:hover { background: #1f3260; }
+.settings-close-btn:hover { background: #86cecb; }
 
 /* ── VMD transport bar ─────────────────────────────── */
 #vmd-bar {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 140;
-  background: rgba(6,10,20,0.94); border-top: 1px solid #1a3a6a;
+  background: rgba(190,200,209,0.97); border-top: 1px solid #86cecb;
   backdrop-filter: blur(8px);
   display: none; flex-direction: column;
   align-items: center; padding: 6px 14px 6px; gap: 5px;
@@ -358,30 +363,30 @@ input[type=range] {
   display: flex; align-items: center; gap: 8px; width: 100%; max-width: 720px;
 }
 #vmd-time {
-  font-size: 10px; color: #4a7a9a; white-space: nowrap;
+  font-size: 10px; color: #137a7f; white-space: nowrap;
   font-variant-numeric: tabular-nums; min-width: 102px;
 }
-#vmd-scrubber { flex: 1; cursor: pointer; accent-color: #3a8aff; }
+#vmd-scrubber { flex: 1; cursor: pointer; accent-color: #137a7f; }
 #vmd-transport-row { display: flex; align-items: center; gap: 3px; }
 .vmd-btn {
   padding: 4px 9px; border-radius: 4px; font-size: 12px; cursor: pointer;
-  border: 1px solid #1a3060; background: #0d1828; color: #5a8ab0;
+  border: 1px solid #86cecb; background: #c3e5e7; color: #373b3e;
   transition: background 0.1s, color 0.1s; user-select: none; white-space: nowrap;
 }
-.vmd-btn:hover  { background: #152035; color: #8ab8d8; }
-.vmd-btn:active { background: #1a2f55; }
+.vmd-btn:hover  { background: #86cecb; color: #373b3e; }
+.vmd-btn:active { background: #bec8d1; }
 .vmd-play-btn   { padding: 4px 14px; font-size: 15px; }
-.vmd-sep { width: 1px; height: 20px; background: #1a3060; margin: 0 3px; flex-shrink: 0; }
+.vmd-sep { width: 1px; height: 20px; background: #86cecb; margin: 0 3px; flex-shrink: 0; }
 #vmd-name {
-  font-size: 10px; color: #304a68; max-width: 120px;
+  font-size: 10px; color: #86cecb; max-width: 120px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .vmd-close-btn {
   padding: 4px 8px; border-radius: 4px; margin-left: 4px;
-  border: 1px solid #3a1030; background: #150a10; color: #905070;
+  border: 1px solid #e12885; background: #fffeec; color: #e12885;
   font-size: 11px; cursor: pointer; transition: background 0.1s;
 }
-.vmd-close-btn:hover { background: #221020; }
+.vmd-close-btn:hover { background: #ffeef5; }
 body.vmd-active #pose-bar { bottom: 72px; }
 @media (max-width: 640px) {
   #vmd-transport-row { flex-wrap: wrap; justify-content: center; }
@@ -435,16 +440,16 @@ body.vmd-active #pose-bar { bottom: 72px; }
 <!-- ═══ OVERLAY ═══════════════════════════════════════ -->
 <div id="overlay">
   <div class="ov-logo">MikuMikuPosing</div>
-  <div class="ov-sub">__s__d__k__</div>
+  <div class="ov-sub">MikuMikuDance PMX Posing</div>
   <div id="ov-dropzone">
     <div class="ov-drop-icon">📁</div>
     <div>「モデルフォルダ」をここにドロップ</div>
     <div class="ov-drop-hint">フォルダごとブラウザにドラッグ＆ドロップ</div>
   </div>
   <button id="ov-browse-btn">📂 フォルダを選択して開く</button>
-  <div style="font-size:10px;color:#2a4060;text-align:center;max-width:320px;line-height:1.6;">
+  <div style="font-size:10px;color:#86cecb;text-align:center;max-width:320px;line-height:1.6;">
     ボタン使用時: ダイアログで「モデルフォルダ」を開く<br>
-    <b style="color:#3a5880">1回クリックして選択</b>→「開く / Choose」ボタンを押してください
+    <b style="color:#137a7f">1回クリックして選択</b>→「開く / Choose」ボタンを押してください
   </div>
   <div id="ov-spinner"></div>
   <div id="ov-msg"></div>
@@ -479,11 +484,11 @@ body.vmd-active #pose-bar { bottom: 72px; }
     <h3>⚙ 環境設定</h3>
     <div class="settings-row">
       <label>空の色 (Sky)</label>
-      <input type="color" id="set-sky-color" value="#131929">
+      <input type="color" id="set-sky-color" value="#c3e5e7">
     </div>
     <div class="settings-row">
       <label>床の色 (Ground)</label>
-      <input type="color" id="set-ground-color" value="#0c1018">
+      <input type="color" id="set-ground-color" value="#bec8d1">
     </div>
     <div class="settings-row">
       <label>環境光 (Ambient)</label>
@@ -539,6 +544,7 @@ body.vmd-active #pose-bar { bottom: 72px; }
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { MMDLoader }     from 'three/addons/loaders/MMDLoader.js';
+import { MMDAnimationHelper } from 'three/addons/animation/MMDAnimationHelper.js';
 
 // ── Bone group definitions (matched to Appearance Miku PMX bone list) ────────
 const BONE_GROUPS = [
@@ -568,6 +574,7 @@ const fileMap = new Map(); // lowercase filename → blob URL
 // VMD animation state — declared here so animate loop can reference them
 let animMixer    = null;
 let animAction   = null;
+let mmdHelper    = null;
 let animDuration = 0;
 let currentTime  = 0;
 let isPlaying    = false;
@@ -597,10 +604,10 @@ renderer.toneMappingExposure = 1.0;
 
 // ── Three.js — scene ──────────────────────────────────────────────────────────
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x131929);
+scene.background = new THREE.Color(0xc3e5e7);
 
 // Fog — subtle depth cue
-scene.fog = new THREE.FogExp2(0x131929, 0.008);
+scene.fog = new THREE.FogExp2(0xc3e5e7, 0.008);
 
 // ── Three.js — camera ─────────────────────────────────────────────────────────
 const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 1000);
@@ -629,13 +636,13 @@ scene.add(rimLight);
 // ── Three.js — ground & grid ──────────────────────────────────────────────────
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(80, 80),
-  new THREE.MeshStandardMaterial({ color: 0x0c1018, roughness: 1, metalness: 0 })
+  new THREE.MeshStandardMaterial({ color: 0xbec8d1, roughness: 1, metalness: 0 })
 );
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-scene.add(new THREE.GridHelper(50, 50, 0x1a2a48, 0x131f38));
+scene.add(new THREE.GridHelper(50, 50, 0x86cecb, 0xc3e5e7));
 
 // ── Bone rotation gizmo ───────────────────────────────────────────────────────
 // Three rings (X=red / Y=green / Z=blue) + axis lines + center sphere.
@@ -869,6 +876,7 @@ function loadModel(pmxBlobUrl) {
       mesh.receiveShadow = true;
       scene.add(mesh);
 
+
       fitCamera(mesh);
       buildBonePanel(mesh);
       buildMaterialPanel(mesh);
@@ -1076,7 +1084,7 @@ function buildMaterialPanel(mesh) {
   const morphCount = mesh.morphTargetInfluences?.length ?? 0;
   if (morphCount > 0) {
     const info = document.createElement('div');
-    info.style.cssText = 'padding:8px 10px 4px;font-size:10px;color:#3a5070;border-top:1px solid #192540;';
+    info.style.cssText = 'padding:8px 10px 4px;font-size:10px;color:#86cecb;border-top:1px solid #86cecb;';
     info.textContent   = `モーフ(表情): ${morphCount} 個`;
     sidebar.appendChild(info);
   }
@@ -1208,7 +1216,7 @@ function showOverlayLoading(msg) {
   ovDropzone.style.display  = 'none';
   ovBrowseBtn.style.display = 'none';
   ovSpinner.style.display   = 'block';
-  ovMsg.style.color         = '#8ab8e0';
+  ovMsg.style.color         = '#137a7f';
   ovMsg.textContent         = msg;
 }
 
@@ -1217,7 +1225,7 @@ function showOverlayError(msg) {
   ovDropzone.style.display  = 'flex';
   ovBrowseBtn.style.display = '';
   ovSpinner.style.display   = 'none';
-  ovMsg.style.color         = '#e06060';
+  ovMsg.style.color         = '#c04040';
   ovMsg.textContent         = msg;
 }
 
@@ -1329,8 +1337,18 @@ document.getElementById('toolbar').addEventListener('click', e => {
     case 'screenshot':    doScreenshot();     break;
     case 'open-vmd':      openVmdPicker();    break;
     case 'open-settings': openSettings();     break;
-    case 'toggle-left':   document.getElementById('sidebar-left').classList.toggle('collapsed');  break;
-    case 'toggle-right':  document.getElementById('sidebar-right').classList.toggle('collapsed'); break;
+    case 'toggle-left': {
+      const sb = document.getElementById('sidebar-left');
+      sb.classList.toggle('collapsed');
+      sb.addEventListener('transitionend', onResize, { once: true });
+      break;
+    }
+    case 'toggle-right': {
+      const sb = document.getElementById('sidebar-right');
+      sb.classList.toggle('collapsed');
+      sb.addEventListener('transitionend', onResize, { once: true });
+      break;
+    }
   }
 });
 
@@ -1665,7 +1683,7 @@ function updateAnimation() {
   const dt  = Math.min((now - animLastTime) / 1000, 0.1); // cap at 100 ms
   animLastTime = now;
   if (dt <= 0) return;
-  animMixer.update(dt);
+  if (mmdHelper) mmdHelper.update(dt); else animMixer.update(dt);
   currentTime = Math.min(animAction.time, animDuration);
   if (animAction.time >= animDuration - 0.001) {
     currentTime = animDuration;
@@ -1684,7 +1702,7 @@ function seekTo(t) {
   animAction.play();
   animAction.paused  = !isPlaying;
   animLastTime       = performance.now();
-  animMixer.update(0);
+  if (mmdHelper) mmdHelper.update(0); else if (animMixer) animMixer.update(0);
   updateTransportUI();
 }
 
@@ -1747,14 +1765,20 @@ function loadVMD(file) {
     clip => {
       URL.revokeObjectURL(vmdBlobUrl);
       if (animAction) animAction.stop();
-      if (animMixer)  animMixer.uncacheRoot(mmdMesh);
+      if (mmdHelper)  { mmdHelper.remove(mmdMesh); mmdHelper = null; }
+      else if (animMixer) animMixer.uncacheRoot(mmdMesh);
 
-      animMixer    = new THREE.AnimationMixer(mmdMesh);
-      animAction   = animMixer.clipAction(clip);
+      // MMDAnimationHelper handles IK (knee/ankle) automatically without Ammo.js
+      mmdHelper = new MMDAnimationHelper({ afterglow: 0 });
+      mmdHelper.add(mmdMesh, { animation: clip, physics: false });
+
+      animMixer = mmdHelper.objects.get(mmdMesh).mixer;
+      animAction = animMixer.clipAction(clip);
       animAction.setLoop(THREE.LoopOnce);
       animAction.clampWhenFinished = true;
       animDuration = clip.duration;
       isPlaying    = false;
+      animAction.paused = true;
 
       const scrubber = document.getElementById('vmd-scrubber');
       scrubber.max   = animDuration.toFixed(3);
@@ -1764,6 +1788,22 @@ function loadVMD(file) {
       document.body.classList.add('vmd-active');
       hideOverlay();
       seekTo(0);
+
+      // Auto-align floor: wait one frame for Three.js to propagate bone world matrices,
+      // then check foot IK target Y positions (bones 1-4 = 左/右 足IK・つま先IK)
+      requestAnimationFrame(() => {
+        if (!mmdMesh) return;
+        mmdMesh.updateMatrixWorld(true);
+        const _bones = mmdMesh.skeleton.bones;
+        const _bv = new THREE.Vector3();
+        let _minY = Infinity;
+        for (const bi of [1, 2, 3, 4]) {
+          if (_bones[bi]) { _bones[bi].getWorldPosition(_bv); _minY = Math.min(_minY, _bv.y); }
+        }
+        if (isFinite(_minY) && _minY < -0.08) {
+          mmdMesh.position.y -= _minY; // lift mesh so lowest foot IK is at floor
+        }
+      });
     },
     undefined,
     err => {
@@ -1819,7 +1859,8 @@ document.getElementById('vmd-save-pose').addEventListener('click', () => {
 
 document.getElementById('vmd-close-btn').addEventListener('click', () => {
   if (animAction) animAction.stop();
-  if (animMixer)  animMixer.stopAllAction();
+  if (mmdHelper)  { mmdHelper.remove(mmdMesh); mmdHelper = null; }
+  else if (animMixer) animMixer.stopAllAction();
   animMixer   = null;
   animAction  = null;
   isPlaying   = false;
