@@ -116,3 +116,4 @@ Project/0515/
 
 - モデルデータ: Appearance Miku (あぴミク) © ANGEL Project / Crypton Future Media, Inc.
 - キャラクター: 初音ミク © Crypton Future Media, Inc. [piapro.net](http://piapro.net)
+- モーション：ロリ神レクイエム　マロ, マスクザスノハラ様：https://marshmallow-qa.com/dolce1211
