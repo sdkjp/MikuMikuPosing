@@ -34,7 +34,10 @@ input[type=range], input[type=color], input[type=checkbox] { letter-spacing: 0; 
   border-bottom: 1px solid #86cecb;
   display: flex; align-items: center; gap: 5px; padding: 0 12px;
   z-index: 100; -webkit-user-select: none; user-select: none; flex-shrink: 0;
+  overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+#toolbar::-webkit-scrollbar { display: none; }
 .tb-title {
   font-size: 13px; font-weight: 700; color: #fffeec;
   letter-spacing: 0.03em; margin-right: 6px; white-space: nowrap;
@@ -391,6 +394,7 @@ input[type=range] {
   padding: 4px 9px; border-radius: 4px; font-size: 12px; cursor: pointer;
   border: 1px solid #86cecb; background: #c3e5e7; color: #373b3e;
   transition: background 0.1s, color 0.1s; user-select: none; white-space: nowrap;
+  font-variant-emoji: text;
 }
 .vmd-btn:hover  { background: #86cecb; color: #373b3e; }
 .vmd-btn:active { background: #bec8d1; }
@@ -417,7 +421,7 @@ body.vmd-active #pose-bar { bottom: 72px; }
 
 <!-- ═══ TOOLBAR ══════════════════════════════════════ -->
 <div id="toolbar">
-  <span class="tb-title">MMP</span>
+  <span class="tb-title">Miku Miku Dance</span>
   <div class="tb-sep"></div>
   <button class="tb-btn accent" data-action="open">フォルダを開く</button>
   <div class="tb-sep"></div>
@@ -425,15 +429,15 @@ body.vmd-active #pose-bar { bottom: 72px; }
   <button class="tb-btn" data-action="save-pose" title="現在のポーズをJSONで保存">ポーズ保存</button>
   <button class="tb-btn" data-action="load-pose" title="JSONファイルからポーズを読み込む">ポーズ読込</button>
   <button class="tb-btn" data-action="screenshot" title="現在の画面をPNGで保存">スクリーンショット</button>
-  <button class="tb-btn" data-action="pose-from-photo" title="写真から全身ポーズを推定する">📷 全身ポーズ</button>
-  <button class="tb-btn" data-action="hand-pose" title="手の写真から指ポーズ＋カメラ移動">✋ 手ポーズ</button>
+  <button class="tb-btn" data-action="pose-from-photo" title="写真から全身ポーズを推定する">全身読込</button>
+  <button class="tb-btn" data-action="hand-pose" title="手の写真から指ポーズ＋カメラ移動">手読込</button>
   <button class="tb-btn" data-action="open-vmd" title="VMDモーションファイルを読み込む">VMD読込（モーション読込）</button>
   <button class="tb-btn" data-action="open-settings" title="環境設定 (空/床/ライト)">設定</button>
   <div class="tb-sep"></div>
   <button class="tb-btn" data-action="toggle-left"  title="ボーンパネルを開閉">⟨ ボーン</button>
   <button class="tb-btn" data-action="toggle-right" title="マテリアルパネルを開閉">マテリアル ⟩</button>
   <div class="tb-spacer"></div>
-  <a href="hand-viewer.html" class="tb-btn" style="text-decoration:none;" title="漫画家・イラストレーター向け 手・耳ビューア">✋ 手・耳</a>
+  <a href="hand-viewer.html" class="tb-btn" style="text-decoration:none;" title="漫画家・イラストレーター向け 手・耳ビューア">手・耳</a>
   <span class="tb-hint" id="tb-hint">マウスドラッグ: 回転 &nbsp;|&nbsp; ホイール: ズーム &nbsp;|&nbsp; 右ドラッグ: 移動</span>
 </div>
 
@@ -554,16 +558,16 @@ body.vmd-active #pose-bar { bottom: 72px; }
   <div id="vmd-transport-row">
     <span id="vmd-name">—</span>
     <div class="vmd-sep"></div>
-    <button class="vmd-btn" id="vmd-to-start" title="最初へ">⏮</button>
-    <button class="vmd-btn" id="vmd-back5"    title="−5秒 (長押しで連続)">◀5s</button>
-    <button class="vmd-btn" id="vmd-back1"    title="−1コマ (長押しで連続)">◀1f</button>
-    <button class="vmd-btn vmd-play-btn" id="vmd-play-pause" title="再生 / 一時停止 [Space]">▶</button>
-    <button class="vmd-btn" id="vmd-fwd1"     title="+1コマ (長押しで連続)">1f▶</button>
-    <button class="vmd-btn" id="vmd-fwd5"     title="+5秒 (長押しで連続)">5s▶</button>
-    <button class="vmd-btn" id="vmd-to-end"   title="最後へ">⏭</button>
+    <button class="vmd-btn" id="vmd-to-start" title="最初へ">|&lt;&lt;</button>
+    <button class="vmd-btn" id="vmd-back5"    title="−5秒 (長押しで連続)">-5s</button>
+    <button class="vmd-btn" id="vmd-back1"    title="−1コマ (長押しで連続)">-1f</button>
+    <button class="vmd-btn vmd-play-btn" id="vmd-play-pause" title="再生 / 一時停止 [Space]">再生</button>
+    <button class="vmd-btn" id="vmd-fwd1"     title="+1コマ (長押しで連続)">+1f</button>
+    <button class="vmd-btn" id="vmd-fwd5"     title="+5秒 (長押しで連続)">+5s</button>
+    <button class="vmd-btn" id="vmd-to-end"   title="最後へ">&gt;&gt;|</button>
     <div class="vmd-sep"></div>
-    <button class="vmd-btn" id="vmd-save-pose" title="このフレームのスクリーンショットを保存">📷</button>
-    <button class="vmd-close-btn" id="vmd-close-btn" title="モーション解除">✕</button>
+    <button class="vmd-btn" id="vmd-save-pose" title="このフレームのスクリーンショットを保存">撮影</button>
+    <button class="vmd-close-btn" id="vmd-close-btn" title="モーション解除">解除</button>
   </div>
 </div>
 
@@ -625,6 +629,9 @@ let animDuration = 0;
 let currentTime  = 0;
 let isPlaying    = false;
 let animLastTime = 0;
+
+// Reusable Euler for quaternion → euler conversion (avoids per-frame allocation)
+const _eulerSync = new THREE.Euler();
 
 // IK solver for manual posing (no VMD) — run after every manual bone change
 let ikSolver        = null;
@@ -1431,13 +1438,17 @@ async function savePose() {
   const payload  = {
     version: 1,
     model:   'Appearance Miku',
-    bones:   mmdMesh.skeleton.bones.map((b, i) => ({
-      index: i,
-      name:  mmdBones[i]?.name ?? '',
-      rx: b.rotation.x,
-      ry: b.rotation.y,
-      rz: b.rotation.z,
-    })),
+    // Read euler from quaternion so VMD-animated bones are captured correctly
+    bones:   mmdMesh.skeleton.bones.map((b, i) => {
+      _eulerSync.setFromQuaternion(b.quaternion, b.rotation.order || 'XYZ');
+      return {
+        index: i,
+        name:  mmdBones[i]?.name ?? '',
+        rx: _eulerSync.x,
+        ry: _eulerSync.y,
+        rz: _eulerSync.z,
+      };
+    }),
   };
   if (saveCam) {
     payload.camera = {
@@ -1814,11 +1825,31 @@ function rotateBoneDelta(boneIdx, dx, dy) {
 function syncSliders(boneIdx) {
   const bone = mmdMesh?.skeleton.bones[boneIdx];
   if (!bone) return;
+  // Read from quaternion to ensure accuracy when AnimationMixer controls the bone
+  _eulerSync.setFromQuaternion(bone.quaternion, bone.rotation.order || 'XYZ');
   document.querySelectorAll(`input[type=range][data-bone-idx="${boneIdx}"]`).forEach(s => {
-    const v = bone.rotation[s.dataset.axis];
+    const v = _eulerSync[s.dataset.axis];
     s.value = v;
     const el = s.closest('.axis-row')?.querySelector('.ax-val');
     if (el) el.textContent = toDeg(v);
+  });
+}
+
+// Sync ALL bone sliders from live quaternion values (called during VMD playback)
+function syncAllBoneSliders() {
+  if (!mmdMesh) return;
+  const bones = mmdMesh.skeleton.bones;
+  document.querySelectorAll('input[type=range][data-bone-idx]').forEach(s => {
+    const bone = bones[+s.dataset.boneIdx];
+    if (!bone) return;
+    _eulerSync.setFromQuaternion(bone.quaternion, bone.rotation.order || 'XYZ');
+    const v = _eulerSync[s.dataset.axis];
+    // Only touch the DOM when the value actually changed (reduce layout thrashing)
+    if (Math.abs(parseFloat(s.value) - v) > 5e-5) {
+      s.value = v;
+      const el = s.closest('.axis-row')?.querySelector('.ax-val');
+      if (el) el.textContent = toDeg(v);
+    }
   });
 }
 
@@ -2043,6 +2074,8 @@ function updateAnimation() {
     isPlaying   = false;
     animAction.paused = true;
   }
+  // Sync bone panel sliders to reflect animated bone positions
+  syncAllBoneSliders();
   updateTransportUI();
 }
 
@@ -2055,7 +2088,9 @@ function seekTo(t) {
   animAction.play();
   animAction.paused  = !isPlaying;
   animLastTime       = performance.now();
-  if (mmdHelper) mmdHelper.update(0); else if (animMixer) animMixer.update(0);
+  // Use tiny non-zero dt so paused actions still get evaluated at the new time
+  if (mmdHelper) mmdHelper.update(1e-9); else if (animMixer) animMixer.update(1e-9);
+  syncAllBoneSliders();
   updateTransportUI();
 }
 
@@ -2084,7 +2119,7 @@ function updateTransportUI() {
   document.getElementById('vmd-time').textContent =
     `${fmtTime(currentTime)} / ${fmtTime(animDuration)}`;
   document.getElementById('vmd-scrubber').value = currentTime.toFixed(3);
-  document.getElementById('vmd-play-pause').textContent = isPlaying ? '⏸' : '▶';
+  document.getElementById('vmd-play-pause').textContent = isPlaying ? '停止' : '再生';
 }
 
 // Long-press helpers for frame-step buttons
