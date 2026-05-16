@@ -400,7 +400,7 @@ input[type=range] {
 }
 .vmd-btn:hover  { background: #86cecb; color: #373b3e; }
 .vmd-btn:active { background: #bec8d1; }
-.vmd-play-btn   { padding: 4px 14px; font-size: 15px; }
+.vmd-play-btn   { padding: 5px 14px; line-height: 0; }
 .vmd-sep { width: 1px; height: 20px; background: #86cecb; margin: 0 3px; flex-shrink: 0; }
 #vmd-name {
   font-size: 10px; color: #86cecb; max-width: 120px;
@@ -432,6 +432,8 @@ body.vmd-active #pose-bar { bottom: 72px; }
 @media (max-width: 640px) {
   #vmd-transport-row { flex-wrap: wrap; justify-content: center; }
   #vmd-name { display: none; }
+  /* スマホでは1コマ送りボタン不要 */
+  #vmd-back1, #vmd-fwd1 { display: none; }
 }
 </style>
 </head>
@@ -581,7 +583,17 @@ body.vmd-active #pose-bar { bottom: 72px; }
     <button class="vmd-btn" id="vmd-to-start" title="最初へ">|&lt;&lt;</button>
     <button class="vmd-btn" id="vmd-back5"    title="−5秒 (長押しで連続)">-5s</button>
     <button class="vmd-btn" id="vmd-back1"    title="−1コマ (長押しで連続)">-1f</button>
-    <button class="vmd-btn vmd-play-btn" id="vmd-play-pause" title="再生 / 一時停止 [Space]">再生</button>
+    <button class="vmd-btn vmd-play-btn" id="vmd-play-pause" title="再生 / 一時停止 [Space]">
+      <!-- SVG play icon (▶) -->
+      <svg id="icon-play" viewBox="0 0 8 12" width="11" height="14" aria-hidden="true">
+        <polygon points="0,0 8,6 0,12" fill="currentColor"/>
+      </svg>
+      <!-- SVG pause icon (⏸) — 再生中に表示 -->
+      <svg id="icon-pause" viewBox="0 0 9 12" width="11" height="14" aria-hidden="true" style="display:none">
+        <rect x="0" y="0" width="3" height="12" fill="currentColor" rx="0.5"/>
+        <rect x="6" y="0" width="3" height="12" fill="currentColor" rx="0.5"/>
+      </svg>
+    </button>
     <button class="vmd-btn" id="vmd-fwd1"     title="+1コマ (長押しで連続)">+1f</button>
     <button class="vmd-btn" id="vmd-fwd5"     title="+5秒 (長押しで連続)">+5s</button>
     <button class="vmd-btn" id="vmd-to-end"   title="最後へ">&gt;&gt;|</button>
@@ -2172,7 +2184,8 @@ function updateTransportUI() {
   document.getElementById('vmd-time').textContent =
     `${fmtTime(currentTime)} / ${fmtTime(animDuration)}`;
   document.getElementById('vmd-scrubber').value = currentTime.toFixed(3);
-  document.getElementById('vmd-play-pause').textContent = isPlaying ? '停止' : '再生';
+  document.getElementById('icon-play' ).style.display = isPlaying ? 'none' : '';
+  document.getElementById('icon-pause').style.display = isPlaying ? ''     : 'none';
 }
 
 // Long-press helpers for frame-step buttons
