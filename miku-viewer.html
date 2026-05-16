@@ -350,6 +350,25 @@ input[type=range] {
 }
 .settings-close-btn:hover { background: #86cecb; }
 
+/* ── Camera confirm modal ───────────────────────────── */
+#cam-confirm-modal {
+  position: fixed; inset: 0; z-index: 500;
+  background: rgba(190,200,209,0.85);
+  display: none; align-items: center; justify-content: center;
+}
+#cam-confirm-modal.open { display: flex; }
+.cam-confirm-box {
+  background: #fffeec; border: 1px solid #86cecb;
+  border-radius: 12px; padding: 26px 30px;
+  min-width: 270px; text-align: center;
+  box-shadow: 0 8px 40px rgba(19,122,127,0.18);
+}
+.cam-confirm-msg {
+  font-size: 13px; color: #373b3e;
+  margin-bottom: 20px; line-height: 1.8;
+}
+.cam-confirm-btns { display: flex; gap: 10px; justify-content: center; }
+
 /* ── VMD transport bar ─────────────────────────────── */
 #vmd-bar {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 140;
@@ -406,6 +425,7 @@ body.vmd-active #pose-bar { bottom: 72px; }
   <button class="tb-btn" data-action="save-pose" title="現在のポーズをJSONで保存">ポーズ保存</button>
   <button class="tb-btn" data-action="load-pose" title="JSONファイルからポーズを読み込む">ポーズ読込</button>
   <button class="tb-btn" data-action="screenshot" title="現在の画面をPNGで保存">スクリーンショット</button>
+  <button class="tb-btn" data-action="pose-from-photo" title="写真からポーズを推定する">📷 写真ポーズ</button>
   <button class="tb-btn" data-action="open-vmd" title="VMDモーションファイルを読み込む">VMD読込（モーション読込）</button>
   <button class="tb-btn" data-action="open-settings" title="環境設定 (空/床/ライト)">設定</button>
   <div class="tb-sep"></div>
@@ -538,6 +558,20 @@ body.vmd-active #pose-bar { bottom: 72px; }
 
 <!-- hidden VMD file input -->
 <input type="file" id="vmd-input" accept=".vmd" style="display:none">
+
+<!-- hidden photo file input for pose estimation -->
+<input type="file" id="photo-input" accept="image/*" style="display:none">
+
+<!-- Camera save confirm modal -->
+<div id="cam-confirm-modal">
+  <div class="cam-confirm-box">
+    <div class="cam-confirm-msg">カメラ位置も保存しますか？<br><span style="font-size:11px;color:#86cecb">読込み時にそのカメラ位置へズームインします</span></div>
+    <div class="cam-confirm-btns">
+      <button id="cam-confirm-yes" class="tb-btn accent">はい</button>
+      <button id="cam-confirm-no" class="tb-btn">いいえ</button>
+    </div>
+  </div>
+</div>
 
 <!-- ═══ APPLICATION ════════════════════════════════════ -->
 <script type="module">
@@ -1122,8 +1156,42 @@ function resetPose() {
   });
 }
 
-function savePose() {
+// Show camera-save confirm modal — returns Promise<boolean>
+function showCameraConfirm() {
+  return new Promise(resolve => {
+    const modal = document.getElementById('cam-confirm-modal');
+    modal.classList.add('open');
+    const cleanup = result => {
+      modal.classList.remove('open');
+      document.getElementById('cam-confirm-yes').onclick = null;
+      document.getElementById('cam-confirm-no').onclick  = null;
+      resolve(result);
+    };
+    document.getElementById('cam-confirm-yes').onclick = () => cleanup(true);
+    document.getElementById('cam-confirm-no').onclick  = () => cleanup(false);
+  });
+}
+
+// Animate camera smoothly from current position to saved position (easeInOutQuad)
+function animateCameraTo(targetPos, targetTarget, duration = 1.0) {
+  const startPos    = camera.position.clone();
+  const startTarget = controls.target.clone();
+  const endPos      = new THREE.Vector3(...targetPos);
+  const endTarget   = new THREE.Vector3(...targetTarget);
+  const t0          = performance.now();
+  (function step() {
+    const t = Math.min((performance.now() - t0) / 1000 / duration, 1);
+    const e = t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t; // easeInOutQuad
+    camera.position.lerpVectors(startPos, endPos, e);
+    controls.target.lerpVectors(startTarget, endTarget, e);
+    controls.update();
+    if (t < 1) requestAnimationFrame(step);
+  })();
+}
+
+async function savePose() {
   if (!mmdMesh) return;
+  const saveCam  = await showCameraConfirm();
   const mmdBones = mmdMesh.userData?.MMD?.bones ?? [];
   const payload  = {
     version: 1,
@@ -1136,6 +1204,12 @@ function savePose() {
       rz: b.rotation.z,
     })),
   };
+  if (saveCam) {
+    payload.camera = {
+      position: camera.position.toArray(),
+      target:   controls.target.toArray(),
+    };
+  }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url  = URL.createObjectURL(blob);
   const a    = Object.assign(document.createElement('a'), { href: url, download: 'miku-pose.json' });
@@ -1179,6 +1253,10 @@ function applyPose(data) {
     const valEl = s.closest('.axis-row')?.querySelector('.ax-val');
     if (valEl) valEl.textContent = toDeg(v);
   });
+  // Restore camera with zoom-in animation if saved
+  if (data.camera?.position && data.camera?.target) {
+    animateCameraTo(data.camera.position, data.camera.target, 1.0);
+  }
 }
 
 function doScreenshot() {
@@ -1334,7 +1412,8 @@ document.getElementById('toolbar').addEventListener('click', e => {
     case 'reset':         resetPose();        break;
     case 'save-pose':     savePose();         break;
     case 'load-pose':     loadPoseDialog();   break;
-    case 'screenshot':    doScreenshot();     break;
+    case 'screenshot':     doScreenshot();     break;
+    case 'pose-from-photo': openPhotoPicker(); break;
     case 'open-vmd':      openVmdPicker();    break;
     case 'open-settings': openSettings();     break;
     case 'toggle-left': {
@@ -1873,6 +1952,138 @@ document.getElementById('vmd-close-btn').addEventListener('click', () => {
   }
 });
 
+
+// ════════════════════════════════════════════════════════════════════════════════
+// PHOTO-TO-POSE  (MediaPipe PoseLandmarker, lazy-loaded on first use)
+// ════════════════════════════════════════════════════════════════════════════════
+
+let _poseLandmarker = null;
+
+async function loadPoseLandmarker() {
+  if (_poseLandmarker) return _poseLandmarker;
+  showOverlayLoading('MediaPipeを読み込み中...\n(初回は少し時間がかかります)');
+  const mod    = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+  const vision = await mod.FilesetResolver.forVisionTasks(
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+  );
+  _poseLandmarker = await mod.PoseLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+      delegate: 'CPU',
+    },
+    runningMode: 'IMAGE',
+    numPoses: 1,
+  });
+  return _poseLandmarker;
+}
+
+function openPhotoPicker() {
+  if (!mmdMesh) { alert('先にモデルを読み込んでください。'); return; }
+  document.getElementById('photo-input').value = '';
+  document.getElementById('photo-input').click();
+}
+
+document.getElementById('photo-input').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (f) applyPoseFromPhoto(f);
+});
+
+async function applyPoseFromPhoto(file) {
+  if (!mmdMesh) return;
+  try {
+    const landmarker = await loadPoseLandmarker();
+    showOverlayLoading('ポーズを推定中...');
+
+    const imgUrl = URL.createObjectURL(file);
+    const img    = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = imgUrl; });
+    URL.revokeObjectURL(imgUrl);
+
+    const result = landmarker.detect(img);
+    if (!result.worldLandmarks?.length) {
+      hideOverlay();
+      alert('人物が検出されませんでした。\n人物がはっきり写った写真を使用してください。');
+      return;
+    }
+
+    // Reset to T-pose, then apply landmark-derived rotations
+    mmdMesh.skeleton.bones.forEach(b => b.rotation.set(0, 0, 0));
+    mmdMesh.skeleton.update();
+    mmdMesh.updateMatrixWorld(true);
+
+    applyPoseFromLandmarks(result.worldLandmarks[0]);
+
+    // Sync all sliders
+    document.querySelectorAll('input[type=range][data-bone-idx]').forEach(s => {
+      const bone = mmdMesh.skeleton.bones[+s.dataset.boneIdx];
+      if (!bone) return;
+      const v = bone.rotation[s.dataset.axis];
+      s.value = v;
+      const el = s.closest('.axis-row')?.querySelector('.ax-val');
+      if (el) el.textContent = toDeg(v);
+    });
+
+    hideOverlay();
+  } catch (err) {
+    console.error('[PoseLandmarker]', err);
+    showOverlayError('ポーズ推定に失敗しました:\n' + (err?.message ?? String(err)));
+  }
+}
+
+function applyPoseFromLandmarks(lms) {
+  // MediaPipe world landmarks: origin at hip center, +x = person's right, +y = up, +z = toward camera
+  // Three.js / MMD: +x = character's right, +y = up → flip Z only
+  const lmV   = i  => new THREE.Vector3(lms[i].x, lms[i].y, -lms[i].z);
+  const lmDir = (a, b) => lmV(b).sub(lmV(a)).normalize();
+
+  // Apply world-space direction to a bone (handles parent hierarchy via matrixWorld)
+  const applyBoneDir = (boneIdx, tPoseWorldDir, targetWorldDir) => {
+    const bone = mmdMesh.skeleton.bones[boneIdx];
+    if (!bone || targetWorldDir.lengthSq() < 1e-6) return;
+    const from = tPoseWorldDir.clone().normalize();
+    const to   = targetWorldDir.clone().normalize();
+    if (from.dot(to) < -0.9999) return; // antiparallel — skip
+
+    // World quaternion that rotates T-pose dir → target dir
+    const worldQ = new THREE.Quaternion().setFromUnitVectors(from, to);
+
+    // Convert to local: localQ = parentWorldQ^-1 * worldQ
+    const parentWorldQ = new THREE.Quaternion();
+    if (bone.parent) {
+      bone.parent.updateWorldMatrix(true, false);
+      bone.parent.getWorldQuaternion(parentWorldQ);
+    }
+    const localQ = parentWorldQ.clone().invert().multiply(worldQ);
+
+    const clamp = x => Math.max(-Math.PI * 0.85, Math.min(Math.PI * 0.85, x));
+    const euler = new THREE.Euler().setFromQuaternion(localQ, 'XYZ');
+    bone.rotation.set(clamp(euler.x), clamp(euler.y), clamp(euler.z));
+    bone.updateWorldMatrix(false, true); // propagate to children
+  };
+
+  const RIGHT = new THREE.Vector3( 1, 0, 0);
+  const LEFT  = new THREE.Vector3(-1, 0, 0);
+  const DOWN  = new THREE.Vector3( 0,-1, 0);
+  const UP    = new THREE.Vector3( 0, 1, 0);
+
+  // Arms (landmark indices: 12=R.shoulder, 14=R.elbow, 16=R.wrist / 11,13,15 for left)
+  applyBoneDir(22, RIGHT, lmDir(12, 14)); // right upper arm
+  applyBoneDir(23, RIGHT, lmDir(14, 16)); // right lower arm
+  applyBoneDir(45, LEFT,  lmDir(11, 13)); // left  upper arm
+  applyBoneDir(46, LEFT,  lmDir(13, 15)); // left  lower arm
+
+  // Legs (24=R.hip, 26=R.knee, 28=R.ankle / 23,25,27 for left)
+  applyBoneDir(11, DOWN, lmDir(24, 26)); // right upper leg
+  applyBoneDir(12, DOWN, lmDir(26, 28)); // right lower leg
+  applyBoneDir( 7, DOWN, lmDir(23, 25)); // left  upper leg
+  applyBoneDir( 8, DOWN, lmDir(25, 27)); // left  lower leg
+
+  // Head: neck midpoint → nose (lm 0)
+  const neck = lmV(11).add(lmV(12)).multiplyScalar(0.5);
+  applyBoneDir(67, UP, lmV(0).sub(neck));
+
+  mmdMesh.skeleton.update();
+}
 
 // ─── Keyboard shortcuts ────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
