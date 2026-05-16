@@ -425,8 +425,8 @@ body.vmd-active #pose-bar { bottom: 72px; }
   <button class="tb-btn" data-action="save-pose" title="現在のポーズをJSONで保存">ポーズ保存</button>
   <button class="tb-btn" data-action="load-pose" title="JSONファイルからポーズを読み込む">ポーズ読込</button>
   <button class="tb-btn" data-action="screenshot" title="現在の画面をPNGで保存">スクリーンショット</button>
-  <!--<button class="tb-btn" data-action="pose-from-photo" title="写真から全身ポーズを推定する">全身ポーズ</button>
-  <button class="tb-btn" data-action="hand-pose" title="手の写真から指ポーズ＋カメラ移動">手ポーズ</button>-->
+  <button class="tb-btn" data-action="pose-from-photo" title="写真から全身ポーズを推定する">全身読込</button>
+  <button class="tb-btn" data-action="hand-pose" title="手の写真から指ポーズ＋カメラ移動">手読込</button>
   <button class="tb-btn" data-action="open-vmd" title="VMDモーションファイルを読み込む">VMD読込（モーション読込）</button>
   <button class="tb-btn" data-action="open-settings" title="環境設定 (空/床/ライト)">設定</button>
   <div class="tb-sep"></div>
@@ -580,6 +580,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { MMDLoader }     from 'three/addons/loaders/MMDLoader.js';
 import { MMDAnimationHelper } from 'three/addons/animation/MMDAnimationHelper.js';
+import { CCDIKSolver }       from 'three/addons/animation/CCDIKSolver.js';
 
 // ── Bone group definitions (matched to Appearance Miku PMX bone list) ────────
 const BONE_GROUPS = [
@@ -614,6 +615,17 @@ let animDuration = 0;
 let currentTime  = 0;
 let isPlaying    = false;
 let animLastTime = 0;
+
+// IK solver for manual posing (no VMD) — run after every manual bone change
+let ikSolver        = null;
+const ikAffectedBones = new Set(); // bone indices driven by IK chains
+
+// Run IK and sync sliders for all IK-driven bones
+function updateIK() {
+  if (!ikSolver || !mmdMesh) return;
+  ikSolver.update();
+  for (const bi of ikAffectedBones) syncSliders(bi);
+}
 
 // Interactive posing state — declared here to avoid TDZ error in animate loop
 // (updateGizmo runs synchronously in the first IIFE frame before let declarations below)
@@ -902,6 +914,8 @@ function loadModel(pmxBlobUrl) {
     mats.forEach(m => { m.map?.dispose(); m.envMap?.dispose(); m.dispose(); });
     mmdMesh = null;
   }
+  ikSolver = null;
+  ikAffectedBones.clear();
 
   new MMDLoader(manager).load(
     PMX_VIRTUAL_URL,  // fake .pmx URL so MMDLoader picks the correct parser
@@ -911,6 +925,14 @@ function loadModel(pmxBlobUrl) {
       mesh.receiveShadow = true;
       scene.add(mesh);
 
+      // Build IK solver from PMX IK chain data
+      const iks = mesh.userData?.MMD?.iks ?? [];
+      ikSolver = new CCDIKSolver(mesh, iks);
+      ikAffectedBones.clear();
+      iks.forEach(ik => {
+        ikAffectedBones.add(ik.effector);
+        ik.links?.forEach(link => ikAffectedBones.add(link.index));
+      });
 
       fitCamera(mesh);
       buildBonePanel(mesh);
@@ -1047,6 +1069,7 @@ function makeBoneEntry(bone, displayName, idx, isIK) {
       bone.rotation[axis] = parseFloat(slider.value);
       valEl.textContent   = toDeg(bone.rotation[axis]);
       mmdMesh?.skeleton.update();
+      updateIK();
     });
 
     row.append(lbl, slider, valEl);
@@ -1149,11 +1172,15 @@ function resetPose() {
   }
   mmdMesh.skeleton.bones.forEach(b => b.rotation.set(0, 0, 0));
   mmdMesh.skeleton.update();
-  // Sync all sliders back to 0
+  updateIK();
+  // Sync all sliders back to 0 (IK may have moved some bones, syncSliders picks those up)
   document.querySelectorAll('input[type=range][data-bone-idx]').forEach(s => {
-    s.value = 0;
+    const bone = mmdMesh.skeleton.bones[+s.dataset.boneIdx];
+    if (!bone) return;
+    const v = bone.rotation[s.dataset.axis];
+    s.value = v;
     const valEl = s.closest('.axis-row')?.querySelector('.ax-val');
-    if (valEl) valEl.textContent = '0.0°';
+    if (valEl) valEl.textContent = toDeg(v);
   });
 }
 
@@ -1245,7 +1272,8 @@ function applyPose(data) {
     if (bone) bone.rotation.set(entry.rx, entry.ry, entry.rz);
   }
   mmdMesh.skeleton.update();
-  // Sync sliders
+  updateIK();
+  // Sync sliders for all bones (including IK-driven ones)
   document.querySelectorAll('input[type=range][data-bone-idx]').forEach(s => {
     const bone = mmdMesh.skeleton.bones[+s.dataset.boneIdx];
     if (!bone) return;
@@ -1536,6 +1564,7 @@ function rotateBoneDelta(boneIdx, dx, dy) {
     bone.rotation.x = clamp(bone.rotation.x + dy * ROT_SENS);
   }
   mmdMesh.skeleton.update();
+  updateIK();
   syncSliders(boneIdx);
 }
 
@@ -1951,6 +1980,7 @@ document.getElementById('vmd-close-btn').addEventListener('click', () => {
   if (mmdMesh) {
     mmdMesh.skeleton.bones.forEach(b => b.rotation.set(0, 0, 0));
     mmdMesh.skeleton.update();
+    updateIK();
   }
 });
 
@@ -2097,6 +2127,7 @@ function applyPoseFromLandmarks(lms) {
   applyBoneDir(67, UP, lmV(0).sub(neck));
 
   mmdMesh.skeleton.update();
+  updateIK();
 }
 
 // ════════════════════════════════════════════════════════════════════════════════
@@ -2238,6 +2269,7 @@ function applyHandFingerBones(worldLms, mmdHand) {
     bone.updateWorldMatrix(false, true);
   }
   mmdMesh.skeleton.update();
+  updateIK();
 }
 
 function matchCameraToHand(normLms, mmdHand) {
